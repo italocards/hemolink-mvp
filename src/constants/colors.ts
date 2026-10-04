@@ -1,0 +1,22 @@
+export const Colors = {
+  primary: '#C0392B',       // vermelho HemoLink
+  primaryDark: '#96281B',
+  primaryLight: '#E74C3C',
+  secondary: '#FFFFFF',
+  background: '#F8F8F8',
+  surface: '#FFFFFF',
+  textPrimary: '#1A1A1A',
+  textSecondary: '#666666',
+  textLight: '#999999',
+  border: '#E0E0E0',
+  success: '#27AE60',
+  warning: '#F39C12',
+  danger: '#E74C3C',
+  urgenciaBaixa: '#27AE60',
+  urgenciaMedia: '#F39C12',
+  urgenciaAlta: '#E67E22',
+  urgenciaCritica: '#C0392B',
+  tabBarActive: '#C0392B',
+  tabBarInactive: '#999999',
+  shadow: 'rgba(0,0,0,0.1)',
+};

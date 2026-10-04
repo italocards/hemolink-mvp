@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "HemoLink",
+    "slug": "hemolink",
+    "version": "1.0.0",
+    "sdkVersion": "57.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#C0392B"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.hemolink.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "O HemoLink precisa da sua localização para encontrar hemocentros próximos.",
+        "NSLocationAlwaysUsageDescription": "O HemoLink precisa da sua localização para encontrar hemocentros próximos."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#C0392B"
+      },
+      "package": "com.hemolink.app",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "O HemoLink precisa da sua localização para encontrar hemocentros próximos."
+        }
+      ]
+    ]
+  }
+}
