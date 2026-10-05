@@ -17,6 +17,7 @@ import { RootStackParamList, TipoSanguineo } from '../types';
 import { Colors, TIPOS_SANGUINEOS } from '../constants';
 import { cadastrarUsuario } from '../services/auth';
 import InputCampo from '../components/InputCampo';
+import InputData from '../components/InputData';
 import BotaoPrimario from '../components/BotaoPrimario';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Cadastro'>;
@@ -136,13 +137,10 @@ export default function CadastroScreen({ navigation }: Props) {
             ) : null}
           </View>
 
-          <InputCampo
+          <InputData
             label="Data da última doação (opcional)"
-            placeholder="DD/MM/AAAA"
             value={ultimaDoacao}
             onChangeText={setUltimaDoacao}
-            keyboardType="numeric"
-            iconLeft="calendar-outline"
           />
 
           <BotaoPrimario

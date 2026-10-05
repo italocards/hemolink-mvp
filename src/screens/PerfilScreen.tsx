@@ -20,6 +20,7 @@ import { Colors, TIPOS_SANGUINEOS } from '../constants';
 import { TipoSanguineo, PerfilStackParamList } from '../types';
 import TipoSanguineoTag from '../components/TipoSanguineoTag';
 import InputCampo from '../components/InputCampo';
+import InputData from '../components/InputData';
 import BotaoPrimario from '../components/BotaoPrimario';
 
 type NavProp = NativeStackNavigationProp<PerfilStackParamList, 'PerfilHome'>;
@@ -181,13 +182,10 @@ export default function PerfilScreen() {
               </TouchableOpacity>
             </View>
 
-            <InputCampo
+            <InputData
               label="Data da última doação"
-              placeholder="DD/MM/AAAA"
               value={ultimaDoacao}
               onChangeText={setUltimaDoacao}
-              keyboardType="numeric"
-              iconLeft="calendar-outline"
             />
 
             <View style={styles.botoesEdicao}>
