@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   Modal,
   FlatList,
+  StatusBar,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,7 +31,6 @@ export default function CadastroScreen({ navigation }: Props) {
   const [ultimaDoacao, setUltimaDoacao] = useState('');
   const [carregando, setCarregando] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-
   const [erros, setErros] = useState<Record<string, string>>({});
 
   function validar() {
@@ -49,21 +49,12 @@ export default function CadastroScreen({ navigation }: Props) {
     if (!validar()) return;
     setCarregando(true);
     try {
-      await cadastrarUsuario(
-        nome.trim(),
-        email.trim(),
-        senha,
-        tipoSanguineo as TipoSanguineo,
-        ultimaDoacao || null
-      );
-      // RootNavigator redireciona automaticamente
+      await cadastrarUsuario(nome.trim(), email.trim(), senha, tipoSanguineo as TipoSanguineo, ultimaDoacao || null);
     } catch (error: any) {
       const msg =
-        error.code === 'auth/email-already-in-use'
-          ? 'Este e-mail já está em uso.'
-          : error.code === 'auth/invalid-email'
-          ? 'E-mail inválido.'
-          : 'Erro ao criar conta. Tente novamente.';
+        error.code === 'auth/email-already-in-use' ? 'Este e-mail já está em uso.'
+        : error.code === 'auth/invalid-email' ? 'E-mail inválido.'
+        : 'Erro ao criar conta. Tente novamente.';
       Alert.alert('Erro', msg);
     } finally {
       setCarregando(false);
@@ -72,21 +63,23 @@ export default function CadastroScreen({ navigation }: Props) {
 
   return (
     <KeyboardAvoidingView
-      style={styles.flex}
+      style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
       <ScrollView
         style={styles.flex}
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View style={styles.header}>
+        <View style={styles.headerArea}>
           <TouchableOpacity style={styles.voltarBtn} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={22} color="#fff" />
+            <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.titulo}>Criar conta</Text>
-          <Text style={styles.subtitulo}>Junte-se aos doadores</Text>
+          <Text style={styles.subtitulo}>Junte-se à rede de doadores</Text>
         </View>
 
         {/* Formulário */}
@@ -119,7 +112,7 @@ export default function CadastroScreen({ navigation }: Props) {
             erro={erros.senha}
           />
 
-          {/* Seletor de tipo sanguíneo */}
+          {/* Tipo sanguíneo */}
           <View style={styles.campoContainer}>
             <Text style={styles.campoLabel}>Tipo sanguíneo</Text>
             <TouchableOpacity
@@ -127,14 +120,12 @@ export default function CadastroScreen({ navigation }: Props) {
               onPress={() => setModalVisible(true)}
             >
               <Ionicons name="water-outline" size={18} color={Colors.textLight} />
-              <Text style={[styles.seletorTexto, !tipoSanguineo && styles.seletorPlaceholder]}>
+              <Text style={[styles.seletorTexto, !tipoSanguineo && { color: Colors.textLight }]}>
                 {tipoSanguineo || 'Selecione seu tipo sanguíneo'}
               </Text>
               <Ionicons name="chevron-down" size={16} color={Colors.textLight} />
             </TouchableOpacity>
-            {erros.tipoSanguineo ? (
-              <Text style={styles.textoErro}>{erros.tipoSanguineo}</Text>
-            ) : null}
+            {erros.tipoSanguineo ? <Text style={styles.textoErro}>{erros.tipoSanguineo}</Text> : null}
           </View>
 
           <InputData
@@ -147,7 +138,7 @@ export default function CadastroScreen({ navigation }: Props) {
             titulo="Criar conta"
             onPress={handleCadastrar}
             carregando={carregando}
-            style={styles.botaoCadastrar}
+            style={styles.botao}
           />
 
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.jaTemConta}>
@@ -159,7 +150,7 @@ export default function CadastroScreen({ navigation }: Props) {
         </View>
       </ScrollView>
 
-      {/* Modal seleção tipo sanguíneo */}
+      {/* Modal tipo sanguíneo */}
       <Modal visible={modalVisible} transparent animationType="fade">
         <TouchableOpacity
           style={styles.modalOverlay}
@@ -174,21 +165,10 @@ export default function CadastroScreen({ navigation }: Props) {
               numColumns={4}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={[
-                    styles.tipoItem,
-                    tipoSanguineo === item && styles.tipoItemSelecionado,
-                  ]}
-                  onPress={() => {
-                    setTipoSanguineo(item as TipoSanguineo);
-                    setModalVisible(false);
-                  }}
+                  style={[styles.tipoItem, tipoSanguineo === item && styles.tipoItemSel]}
+                  onPress={() => { setTipoSanguineo(item as TipoSanguineo); setModalVisible(false); }}
                 >
-                  <Text
-                    style={[
-                      styles.tipoItemTexto,
-                      tipoSanguineo === item && styles.tipoItemTextoSelecionado,
-                    ]}
-                  >
+                  <Text style={[styles.tipoTexto, tipoSanguineo === item && styles.tipoTextoSel]}>
                     {item}
                   </Text>
                 </TouchableOpacity>
@@ -202,74 +182,45 @@ export default function CadastroScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: Colors.background },
-  scroll: { flexGrow: 1 },
-  header: {
-    backgroundColor: Colors.primary,
-    paddingTop: 60,
-    paddingBottom: 36,
-    paddingHorizontal: 24,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    gap: 4,
+  container: { flex: 1, backgroundColor: Colors.background },
+  flex: { flex: 1 },
+  scroll: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 40 },
+
+  // Header
+  headerArea: { paddingTop: 56, paddingBottom: 32 },
+  voltarBtn: {
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: Colors.backgroundGray,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 20,
   },
-  voltarBtn: { marginBottom: 12 },
-  titulo: { fontSize: 26, fontWeight: '800', color: '#fff' },
-  subtitulo: { fontSize: 14, color: 'rgba(255,255,255,0.85)' },
-  form: { padding: 24, paddingTop: 28 },
+  titulo: { fontSize: 28, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.5, marginBottom: 6 },
+  subtitulo: { fontSize: 15, color: Colors.textSecondary },
+
+  // Formulário
+  form: {},
   campoContainer: { marginBottom: 16 },
   campoLabel: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary, marginBottom: 6 },
   seletor: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    borderRadius: 12,
-    height: 50,
-    paddingHorizontal: 14,
-    gap: 8,
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: Colors.background,
+    borderWidth: 1.5, borderColor: Colors.border,
+    borderRadius: 12, height: 50, paddingHorizontal: 14, gap: 8,
   },
   seletorErro: { borderColor: Colors.danger },
   seletorTexto: { flex: 1, fontSize: 15, color: Colors.textPrimary },
-  seletorPlaceholder: { color: Colors.textLight },
   textoErro: { color: Colors.danger, fontSize: 12, marginTop: 4 },
-  botaoCadastrar: { marginTop: 8 },
+  botao: { marginTop: 8 },
   jaTemConta: { alignItems: 'center', marginTop: 20 },
   jaTemContaTexto: { fontSize: 14, color: Colors.textSecondary },
   jaTemContaLink: { color: Colors.primary, fontWeight: '700' },
+
   // Modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  modalContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 24,
-    width: '100%',
-  },
-  modalTitulo: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  tipoItem: {
-    flex: 1,
-    margin: 6,
-    height: 56,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tipoItemSelecionado: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  tipoItemTexto: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
-  tipoItemTextoSelecionado: { color: '#fff' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  modalContainer: { backgroundColor: Colors.background, borderRadius: 20, padding: 24, width: '100%' },
+  modalTitulo: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary, marginBottom: 20, textAlign: 'center' },
+  tipoItem: { flex: 1, margin: 6, height: 56, borderRadius: 12, borderWidth: 1.5, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
+  tipoItemSel: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  tipoTexto: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
+  tipoTextoSel: { color: '#fff' },
 });

@@ -21,10 +21,11 @@ export default function SplashScreen({ navigation }: Props) {
 
       {/* Logo área */}
       <View style={styles.logoArea}>
-        <View style={styles.logoCircle}>
-          <Text style={styles.logoEmoji}>🩸</Text>
-        </View>
-        <Text style={styles.nome}>HemoLink</Text>
+        <Image
+          source={require('../../assets/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
         <Text style={styles.slogan}>Cada doação salva uma vida</Text>
       </View>
 
@@ -61,29 +62,16 @@ const styles = StyleSheet.create({
   },
   logoArea: {
     alignItems: 'center',
-    gap: 12,
+    gap: 16,
   },
-  logoCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  logoEmoji: {
-    fontSize: 52,
-  },
-  nome: {
-    fontSize: 42,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: 2,
+  logo: {
+    width: 260,
+    height: 160,
   },
   slogan: {
     fontSize: 15,
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,255,255,0.85)',
     marginTop: 4,
+    letterSpacing: 0.3,
   },
 });

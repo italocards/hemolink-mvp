@@ -8,6 +8,8 @@ import {
   ScrollView,
   Alert,
   TouchableOpacity,
+  Image,
+  StatusBar,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
@@ -27,8 +29,7 @@ export default function LoginScreen({ navigation }: Props) {
 
   function validar() {
     let valido = true;
-    setErroEmail('');
-    setErroSenha('');
+    setErroEmail(''); setErroSenha('');
     if (!email.trim()) { setErroEmail('Informe seu e-mail'); valido = false; }
     if (!senha.trim()) { setErroSenha('Informe sua senha'); valido = false; }
     return valido;
@@ -39,7 +40,6 @@ export default function LoginScreen({ navigation }: Props) {
     setCarregando(true);
     try {
       await entrar(email.trim(), senha);
-      // RootNavigator redireciona automaticamente via onAuthStateChanged
     } catch (error: any) {
       const msg =
         error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password'
@@ -57,21 +57,24 @@ export default function LoginScreen({ navigation }: Props) {
 
   return (
     <KeyboardAvoidingView
-      style={styles.flex}
+      style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
       <ScrollView
-        style={styles.flex}
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        {/* Header vermelho */}
-        <View style={styles.header}>
-          <View style={styles.logoCircle}>
-            <Text style={styles.logoEmoji}>🩸</Text>
-          </View>
-          <Text style={styles.titulo}>HemoLink</Text>
-          <Text style={styles.subtitulo}>Bem-vindo de volta</Text>
+        {/* Logo + título */}
+        <View style={styles.topoArea}>
+          <Image
+            source={require('../../assets/logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Text style={styles.titulo}>Bem-vindo de volta!</Text>
+          <Text style={styles.subtitulo}>Acesse sua conta para continuar</Text>
         </View>
 
         {/* Formulário */}
@@ -109,62 +112,55 @@ export default function LoginScreen({ navigation }: Props) {
             <View style={styles.linha} />
           </View>
 
-          <BotaoPrimario
-            titulo="Criar conta"
+          <TouchableOpacity
+            style={styles.botaoCriar}
             onPress={() => navigation.navigate('Cadastro')}
-            variante="secundario"
-          />
-
-          <Text style={styles.textoInfo}>
-            Ao entrar, você concorda em salvar vidas. 🩸
-          </Text>
+            activeOpacity={0.8}
+          >
+            <Text style={styles.botaoCriarTexto}>Criar conta</Text>
+          </TouchableOpacity>
         </View>
+
+        {/* Rodapé */}
+        <Text style={styles.rodape}>
+          Ao entrar, você concorda em salvar vidas. 🩸
+        </Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: Colors.background },
-  scroll: { flexGrow: 1 },
-  header: {
-    backgroundColor: Colors.primary,
-    paddingTop: 80,
-    paddingBottom: 48,
-    alignItems: 'center',
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    gap: 8,
-  },
-  logoCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+  container: { flex: 1, backgroundColor: Colors.background },
+  scroll: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 32 },
+
+  // Topo
+  topoArea: { alignItems: 'center', paddingTop: 64, paddingBottom: 40 },
+  logo: { width: 180, height: 56, marginBottom: 32 },
+  titulo: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.5, marginBottom: 6 },
+  subtitulo: { fontSize: 15, color: Colors.textSecondary },
+
+  // Formulário
+  form: {},
+  botaoEntrar: { marginTop: 8 },
+
+  // Divisor
+  divisor: { flexDirection: 'row', alignItems: 'center', marginVertical: 20, gap: 12 },
+  linha: { flex: 1, height: 1, backgroundColor: Colors.border },
+  divisorTexto: { fontSize: 13, color: Colors.textLight },
+
+  // Botão criar conta
+  botaoCriar: {
+    height: 52,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
+    backgroundColor: Colors.backgroundGray,
   },
-  logoEmoji: { fontSize: 36 },
-  titulo: { fontSize: 30, fontWeight: '800', color: '#fff', letterSpacing: 1.5 },
-  subtitulo: { fontSize: 15, color: 'rgba(255,255,255,0.85)' },
-  form: {
-    padding: 24,
-    paddingTop: 32,
-  },
-  botaoEntrar: { marginTop: 8 },
-  divisor: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 20,
-    gap: 12,
-  },
-  linha: { flex: 1, height: 1, backgroundColor: Colors.border },
-  divisorTexto: { color: Colors.textLight, fontSize: 13 },
-  textoInfo: {
-    textAlign: 'center',
-    color: Colors.textLight,
-    fontSize: 12,
-    marginTop: 24,
-  },
+  botaoCriarTexto: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
+
+  // Rodapé
+  rodape: { textAlign: 'center', color: Colors.textLight, fontSize: 12, marginTop: 32 },
 });

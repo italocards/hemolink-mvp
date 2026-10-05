@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -17,10 +18,8 @@ import {
   buscarSolicitacoesAceitas,
   buscarHemocentros,
 } from '../services/solicitacoes';
-import { Colors, URGENCIA_COLORS, URGENCIA_LABELS } from '../constants';
+import { Colors, URGENCIA_LABELS, URGENCIA_COLORS, URGENCIA_LIGHT_COLORS } from '../constants';
 import { Solicitacao, Hemocentro, SolicitacoesStackParamList } from '../types';
-import TipoSanguineoTag from '../components/TipoSanguineoTag';
-import UrgenciaBadge from '../components/UrgenciaBadge';
 
 type NavProp = NativeStackNavigationProp<SolicitacoesStackParamList, 'ListaSolicitacoes'>;
 
@@ -45,7 +44,6 @@ export default function SolicitacoesScreen() {
       hemos.forEach((h) => (mapaHemos[h.id] = h));
       setHemocentros(mapaHemos);
       setPendentes(pend);
-
       if (usuario?.id) {
         const aceit = await buscarSolicitacoesAceitas(usuario.id);
         setAceitas(aceit);
@@ -57,15 +55,16 @@ export default function SolicitacoesScreen() {
     }
   }, [usuario?.id]);
 
-  useEffect(() => {
-    carregar();
-  }, [carregar]);
+  useEffect(() => { carregar(); }, [carregar]);
 
   const dados = aba === 'pendentes' ? pendentes : aceitas;
 
   function renderItem({ item }: { item: Solicitacao }) {
     const hemo = hemocentros[item.hemocentroId];
     const dataFormatada = new Date(item.data).toLocaleDateString('pt-BR');
+    const urgCor = URGENCIA_COLORS[item.urgencia] ?? Colors.textSecondary;
+    const urgCorLight = URGENCIA_LIGHT_COLORS[item.urgencia] ?? Colors.backgroundGray;
+    const urgLabel = (URGENCIA_LABELS[item.urgencia] ?? item.urgencia).toUpperCase();
 
     return (
       <TouchableOpacity
@@ -73,41 +72,57 @@ export default function SolicitacoesScreen() {
         onPress={() => navigation.navigate('DetalhesSolicitacao', { solicitacaoId: item.id })}
         activeOpacity={0.8}
       >
-        <View style={styles.cardTop}>
-          <TipoSanguineoTag tipo={item.tipoSanguineo} tamanho="medio" />
-          <View style={styles.cardInfo}>
-            <View style={styles.cardInfoRow}>
-              <UrgenciaBadge urgencia={item.urgencia} />
-            </View>
-            <Text style={styles.cardHemo} numberOfLines={1}>
-              <Ionicons name="location-outline" size={13} color={Colors.textSecondary} />{' '}
-              {hemo?.nome ?? 'Hemocentro'}
-            </Text>
-            <Text style={styles.cardEndereco} numberOfLines={1}>
+        {/* Tipo sanguíneo */}
+        <View style={styles.cardTipoArea}>
+          <Text style={styles.cardTipo}>{item.tipoSanguineo}</Text>
+        </View>
+
+        {/* Conteúdo */}
+        <View style={styles.cardConteudo}>
+          {/* Badge urgência */}
+          <View style={[styles.urgBadge, { backgroundColor: urgCorLight }]}>
+            <Text style={[styles.urgBadgeTexto, { color: urgCor }]}>{urgLabel}</Text>
+          </View>
+
+          {/* Hemocentro */}
+          <Text style={styles.cardHemoNome} numberOfLines={1}>
+            {hemo?.nome ?? 'Hemocentro'}
+          </Text>
+          <View style={styles.cardRow}>
+            <Ionicons name="location-outline" size={13} color={Colors.textSecondary} />
+            <Text style={styles.cardRowTexto} numberOfLines={1}>
               {hemo?.endereco ?? ''}
             </Text>
           </View>
+
+          {/* Data */}
+          <View style={styles.cardRow}>
+            <Ionicons name="calendar-outline" size={13} color={Colors.textSecondary} />
+            <Text style={styles.cardRowTexto}>{dataFormatada}</Text>
+
+            {aba === 'aceitas' && (
+              <View style={styles.aceitaTag}>
+                <Ionicons name="checkmark-circle" size={12} color={Colors.success} />
+                <Text style={styles.aceitaTagTexto}>Confirmado</Text>
+              </View>
+            )}
+          </View>
         </View>
 
-        <View style={styles.cardBottom}>
-          <View style={styles.cardData}>
-            <Ionicons name="calendar-outline" size={13} color={Colors.textLight} />
-            <Text style={styles.cardDataTexto}>{dataFormatada}</Text>
-          </View>
-          {aba === 'aceitas' && (
-            <View style={styles.aceitaBadge}>
-              <Ionicons name="checkmark-circle" size={14} color={Colors.success} />
-              <Text style={styles.aceitaTexto}>Confirmado</Text>
-            </View>
-          )}
-          <Ionicons name="chevron-forward" size={18} color={Colors.textLight} />
-        </View>
+        <Ionicons name="chevron-forward" size={18} color={Colors.textLight} />
       </TouchableOpacity>
     );
   }
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitulo}>Solicitações</Text>
+      </View>
+
       {/* Abas */}
       <View style={styles.abas}>
         <TouchableOpacity
@@ -128,16 +143,20 @@ export default function SolicitacoesScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Lista */}
       {carregando ? (
         <View style={styles.centro}>
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>
       ) : dados.length === 0 ? (
         <View style={styles.centro}>
-          <Ionicons name="water-outline" size={64} color={Colors.border} />
-          <Text style={styles.vazio}>
+          <View style={styles.vazioIcone}>
+            <Ionicons name="water-outline" size={40} color={Colors.textLight} />
+          </View>
+          <Text style={styles.vazioTitulo}>Nenhuma solicitação</Text>
+          <Text style={styles.vazioSub}>
             {aba === 'pendentes'
-              ? 'Nenhuma solicitação pendente no momento.'
+              ? 'Não há solicitações pendentes no momento.'
               : 'Você ainda não aceitou nenhuma solicitação.'}
           </Text>
         </View>
@@ -147,6 +166,7 @@ export default function SolicitacoesScreen() {
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           contentContainerStyle={styles.lista}
+          showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={carregando} onRefresh={carregar} tintColor={Colors.primary} />
           }
@@ -156,52 +176,93 @@ export default function SolicitacoesScreen() {
   );
 }
 
+const shadow = {
+  shadowColor: '#000',
+  shadowOpacity: 0.06,
+  shadowRadius: 10,
+  shadowOffset: { width: 0, height: 2 },
+  elevation: 3,
+};
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
+
+  // Header
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 12,
+    backgroundColor: Colors.background,
+  },
+  headerTitulo: { fontSize: 28, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.5 },
+
+  // Abas
   abas: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
+    paddingHorizontal: 20,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
+    backgroundColor: Colors.background,
   },
   aba: {
-    flex: 1,
     paddingVertical: 14,
-    alignItems: 'center',
+    paddingHorizontal: 4,
+    marginRight: 24,
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
   },
   abaAtiva: { borderBottomColor: Colors.primary },
-  abaTexto: { fontSize: 14, color: Colors.textSecondary, fontWeight: '600' },
+  abaTexto: { fontSize: 14, fontWeight: '600', color: Colors.textLight },
   abaTextoAtivo: { color: Colors.primary },
-  lista: { padding: 16, gap: 12 },
+
+  // Lista
+  lista: { padding: 20, gap: 12 },
+
+  // Card
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  cardTop: { flexDirection: 'row', gap: 12, marginBottom: 12 },
-  cardInfo: { flex: 1, gap: 5 },
-  cardInfoRow: { flexDirection: 'row', gap: 8 },
-  cardHemo: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
-  cardEndereco: { fontSize: 12, color: Colors.textSecondary },
-  cardBottom: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    paddingTop: 10,
+    backgroundColor: Colors.background,
+    borderRadius: 16,
+    padding: 16,
+    gap: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...shadow,
   },
-  cardData: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  cardDataTexto: { fontSize: 12, color: Colors.textLight },
-  aceitaBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  aceitaTexto: { fontSize: 12, color: Colors.success, fontWeight: '600' },
-  centro: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 16, padding: 40 },
-  vazio: { fontSize: 15, color: Colors.textSecondary, textAlign: 'center' },
+  cardTipoArea: {
+    width: 52, height: 52,
+    borderRadius: 14,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardTipo: { fontSize: 15, fontWeight: '900', color: '#fff', letterSpacing: -0.5 },
+  cardConteudo: { flex: 1, gap: 4 },
+  urgBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginBottom: 2,
+  },
+  urgBadgeTexto: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  cardHemoNome: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+  cardRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  cardRowTexto: { flex: 1, fontSize: 12, color: Colors.textSecondary },
+  aceitaTag: { flexDirection: 'row', alignItems: 'center', gap: 3, marginLeft: 'auto' as any },
+  aceitaTagTexto: { fontSize: 11, color: Colors.success, fontWeight: '600' },
+
+  // Vazio
+  centro: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40, gap: 12 },
+  vazioIcone: {
+    width: 80, height: 80,
+    borderRadius: 24,
+    backgroundColor: Colors.backgroundGray,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  vazioTitulo: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
+  vazioSub: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
 });
