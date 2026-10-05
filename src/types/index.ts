@@ -70,3 +70,8 @@ export type SolicitacoesStackParamList = {
   ListaSolicitacoes: undefined;
   DetalhesSolicitacao: { solicitacaoId: string };
 };
+
+export type PerfilStackParamList = {
+  PerfilHome: undefined;
+  DefinirCasa: undefined;
+};

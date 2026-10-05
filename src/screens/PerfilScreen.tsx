@@ -11,17 +11,22 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { doc, updateDoc } from 'firebase/firestore';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../hooks/useAuth';
 import { sair } from '../services/auth';
 import { db } from '../services/firebase';
 import { Colors, TIPOS_SANGUINEOS } from '../constants';
-import { TipoSanguineo } from '../types';
+import { TipoSanguineo, PerfilStackParamList } from '../types';
 import TipoSanguineoTag from '../components/TipoSanguineoTag';
 import InputCampo from '../components/InputCampo';
 import BotaoPrimario from '../components/BotaoPrimario';
 
+type NavProp = NativeStackNavigationProp<PerfilStackParamList, 'PerfilHome'>;
+
 export default function PerfilScreen() {
   const { usuario, setUsuario } = useAuth();
+  const navigation = useNavigation<NavProp>();
   const [editando, setEditando] = useState(false);
   const [nome, setNome] = useState(usuario?.nome ?? '');
   const [ultimaDoacao, setUltimaDoacao] = useState(usuario?.ultimaDoacao ?? '');
@@ -59,6 +64,8 @@ export default function PerfilScreen() {
     ? new Date(usuario.ultimaDoacao).toLocaleDateString('pt-BR')
     : 'Não informada';
 
+  const temCasaSalva = !!(usuario?.latitude && usuario?.longitude);
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
@@ -81,17 +88,61 @@ export default function PerfilScreen() {
           <>
             <View style={styles.secao}>
               <Text style={styles.secaoTitulo}>Informações pessoais</Text>
-
               <InfoRow icone="person-outline" label="Nome" valor={usuario?.nome ?? '-'} />
               <InfoRow icone="mail-outline" label="E-mail" valor={usuario?.email ?? '-'} />
               <InfoRow icone="water-outline" label="Tipo sanguíneo" valor={usuario?.tipoSanguineo ?? '-'} />
               <InfoRow icone="calendar-outline" label="Última doação" valor={ultimaDoacaoFormatada} />
             </View>
 
-            <TouchableOpacity style={styles.botaoEditar} onPress={() => setEditando(true)} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={styles.botaoEditar}
+              onPress={() => setEditando(true)}
+              activeOpacity={0.8}
+            >
               <Ionicons name="pencil-outline" size={18} color={Colors.primary} />
               <Text style={styles.botaoEditarTexto}>Editar perfil</Text>
             </TouchableOpacity>
+
+            {/* Localização da casa */}
+            <View style={styles.secao}>
+              <Text style={styles.secaoTitulo}>Localização</Text>
+
+              <View style={styles.casaRow}>
+                <View style={[styles.casaIcone, temCasaSalva && styles.casaIconeAtivo]}>
+                  <Ionicons
+                    name="home"
+                    size={22}
+                    color={temCasaSalva ? Colors.primary : Colors.textLight}
+                  />
+                </View>
+                <View style={styles.casaTexto}>
+                  <Text style={styles.casaLabel}>Casa</Text>
+                  <Text style={styles.casaValor}>
+                    {temCasaSalva
+                      ? `${usuario!.latitude!.toFixed(4)}, ${usuario!.longitude!.toFixed(4)}`
+                      : 'Não definida'}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.casaBotao}
+                  onPress={() => navigation.navigate('DefinirCasa')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.casaBotaoTexto}>
+                    {temCasaSalva ? 'Alterar' : 'Definir'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {temCasaSalva && (
+                <View style={styles.casaSalvaInfo}>
+                  <Ionicons name="checkmark-circle" size={15} color={Colors.success} />
+                  <Text style={styles.casaSalvaTexto}>
+                    Sua casa aparece no mapa como marcador azul
+                  </Text>
+                </View>
+              )}
+            </View>
 
             {/* Histórico simplificado */}
             <View style={styles.secao}>
@@ -99,7 +150,8 @@ export default function PerfilScreen() {
               <View style={styles.historicoItem}>
                 <Ionicons name="time-outline" size={20} color={Colors.textLight} />
                 <Text style={styles.historicoTexto}>
-                  Última doação: <Text style={styles.historicoBold}>{ultimaDoacaoFormatada}</Text>
+                  Última doação:{' '}
+                  <Text style={styles.historicoBold}>{ultimaDoacaoFormatada}</Text>
                 </Text>
               </View>
               <Text style={styles.historicoInfo}>
@@ -120,13 +172,9 @@ export default function PerfilScreen() {
               iconLeft="person-outline"
             />
 
-            {/* Tipo sanguíneo */}
             <View style={styles.campoContainer}>
               <Text style={styles.campoLabel}>Tipo sanguíneo</Text>
-              <TouchableOpacity
-                style={styles.seletor}
-                onPress={() => setModalTipo(true)}
-              >
+              <TouchableOpacity style={styles.seletor} onPress={() => setModalTipo(true)}>
                 <Ionicons name="water-outline" size={18} color={Colors.textLight} />
                 <Text style={styles.seletorTexto}>{tipoSanguineo || 'Selecionar'}</Text>
                 <Ionicons name="chevron-down" size={16} color={Colors.textLight} />
@@ -168,7 +216,11 @@ export default function PerfilScreen() {
 
       {/* Modal tipo sanguíneo */}
       <Modal visible={modalTipo} transparent animationType="fade">
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setModalTipo(false)}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setModalTipo(false)}
+        >
           <View style={styles.modalContainer}>
             <Text style={styles.modalTitulo}>Tipo Sanguíneo</Text>
             <FlatList
@@ -178,7 +230,10 @@ export default function PerfilScreen() {
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={[styles.tipoItem, tipoSanguineo === item && styles.tipoItemSel]}
-                  onPress={() => { setTipoSanguineo(item as TipoSanguineo); setModalTipo(false); }}
+                  onPress={() => {
+                    setTipoSanguineo(item as TipoSanguineo);
+                    setModalTipo(false);
+                  }}
                 >
                   <Text style={[styles.tipoTexto, tipoSanguineo === item && styles.tipoTextoSel]}>
                     {item}
@@ -193,7 +248,15 @@ export default function PerfilScreen() {
   );
 }
 
-function InfoRow({ icone, label, valor }: { icone: React.ComponentProps<typeof Ionicons>['name']; label: string; valor: string }) {
+function InfoRow({
+  icone,
+  label,
+  valor,
+}: {
+  icone: React.ComponentProps<typeof Ionicons>['name'];
+  label: string;
+  valor: string;
+}) {
   return (
     <View style={infoStyles.row}>
       <View style={infoStyles.iconeCont}>
@@ -208,8 +271,22 @@ function InfoRow({ icone, label, valor }: { icone: React.ComponentProps<typeof I
 }
 
 const infoStyles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 12, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  iconeCont: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#FDEDEC', alignItems: 'center', justifyContent: 'center' },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  iconeCont: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#FDEDEC',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   texto: { flex: 1 },
   label: { fontSize: 11, color: Colors.textLight, marginBottom: 2 },
   valor: { fontSize: 15, color: Colors.textPrimary, fontWeight: '500' },
@@ -265,10 +342,48 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   botaoEditarTexto: { fontSize: 15, fontWeight: '700', color: Colors.primary },
+  // Casa
+  casaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 4,
+  },
+  casaIcone: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#F2F3F4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  casaIconeAtivo: { backgroundColor: '#FDEDEC' },
+  casaTexto: { flex: 1 },
+  casaLabel: { fontSize: 11, color: Colors.textLight, marginBottom: 2 },
+  casaValor: { fontSize: 13, color: Colors.textPrimary, fontWeight: '500' },
+  casaBotao: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 10,
+  },
+  casaBotaoTexto: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  casaSalvaInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 10,
+    backgroundColor: '#EAFAF1',
+    padding: 10,
+    borderRadius: 10,
+  },
+  casaSalvaTexto: { fontSize: 12, color: Colors.success, fontWeight: '500' },
+  // Histórico
   historicoItem: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
   historicoTexto: { fontSize: 14, color: Colors.textSecondary },
   historicoBold: { fontWeight: '700', color: Colors.textPrimary },
   historicoInfo: { fontSize: 11, color: Colors.textLight, fontStyle: 'italic' },
+  // Sair
   botaoSair: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -286,14 +401,45 @@ const styles = StyleSheet.create({
   // Edição
   campoContainer: { marginBottom: 16 },
   campoLabel: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary, marginBottom: 6 },
-  seletor: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.background, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 12, height: 50, paddingHorizontal: 14, gap: 8 },
+  seletor: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    borderRadius: 12,
+    height: 50,
+    paddingHorizontal: 14,
+    gap: 8,
+  },
   seletorTexto: { flex: 1, fontSize: 15, color: Colors.textPrimary },
   botoesEdicao: { flexDirection: 'row', gap: 12, marginTop: 8 },
   // Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
   modalContainer: { backgroundColor: '#fff', borderRadius: 20, padding: 24, width: '100%' },
-  modalTitulo: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary, marginBottom: 20, textAlign: 'center' },
-  tipoItem: { flex: 1, margin: 6, height: 56, borderRadius: 12, borderWidth: 1.5, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
+  modalTitulo: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  tipoItem: {
+    flex: 1,
+    margin: 6,
+    height: 56,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   tipoItemSel: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   tipoTexto: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
   tipoTextoSel: { color: '#fff' },

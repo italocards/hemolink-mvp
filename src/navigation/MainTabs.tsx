@@ -5,8 +5,8 @@ import { MainTabParamList } from '../types';
 import { Colors } from '../constants';
 import HomeScreen from '../screens/HomeScreen';
 import MapaScreen from '../screens/MapaScreen';
-import PerfilScreen from '../screens/PerfilScreen';
 import SolicitacoesStack from './SolicitacoesStack';
+import PerfilStack from './PerfilStack';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -50,7 +50,7 @@ export default function MainTabs() {
         component={SolicitacoesStack}
         options={{ title: 'Solicitações' }}
       />
-      <Tab.Screen name="Perfil" component={PerfilScreen} options={{ title: 'Perfil' }} />
+      <Tab.Screen name="Perfil" component={PerfilStack} options={{ title: 'Perfil' }} />
     </Tab.Navigator>
   );
 }
