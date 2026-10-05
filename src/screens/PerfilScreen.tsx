@@ -63,9 +63,27 @@ export default function PerfilScreen() {
     ]);
   }
 
-  const ultimaDoacaoFormatada = usuario?.ultimaDoacao
-    ? new Date(usuario.ultimaDoacao).toLocaleDateString('pt-BR')
-    : 'Não informada';
+  // Converte DD/MM/AAAA → exibição legível sem usar new Date() (evita Invalid Date)
+  function formatarExibicaoData(data: string | null): string {
+    if (!data) return 'Não informada';
+    // Suporta tanto DD/MM/AAAA (novo formato) quanto ISO AAAA-MM-DD (legado)
+    if (data.includes('/')) {
+      const partes = data.split('/');
+      if (partes.length === 3 && partes[2].length === 4) {
+        return data; // já está no formato correto DD/MM/AAAA
+      }
+    }
+    if (data.includes('-')) {
+      // ISO: AAAA-MM-DD → DD/MM/AAAA
+      const partes = data.split('T')[0].split('-');
+      if (partes.length === 3) {
+        return `${partes[2]}/${partes[1]}/${partes[0]}`;
+      }
+    }
+    return data;
+  }
+
+  const ultimaDoacaoFormatada = formatarExibicaoData(usuario?.ultimaDoacao ?? null);
 
   const temCasaSalva = !!(usuario?.latitude && usuario?.longitude);
 
