@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -87,6 +87,36 @@ export default function PerfilScreen() {
 
   const temCasaSalva = !!(usuario?.latitude && usuario?.longitude);
 
+  // Geocodificação reversa — converte coordenadas em endereço via Nominatim (gratuito)
+  const [enderecoСasa, setEnderecoСasa] = useState<string>('');
+  const [buscandoEndereco, setBuscandoEndereco] = useState(false);
+
+  useEffect(() => {
+    if (!usuario?.latitude || !usuario?.longitude) {
+      setEnderecoСasa('');
+      return;
+    }
+    setBuscandoEndereco(true);
+    fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${usuario.latitude}&lon=${usuario.longitude}&format=json&accept-language=pt-BR`,
+      { headers: { 'User-Agent': 'HemoLink-MVP/1.0' } }
+    )
+      .then((r) => r.json())
+      .then((data) => {
+        const addr = data.address ?? {};
+        const partes = [
+          addr.road ?? addr.pedestrian ?? addr.suburb,
+          addr.house_number,
+          addr.suburb ?? addr.neighbourhood,
+          addr.city ?? addr.town ?? addr.village,
+          addr.state,
+        ].filter(Boolean);
+        setEnderecoСasa(partes.join(', ') || data.display_name || 'Endereço encontrado');
+      })
+      .catch(() => setEnderecoСasa('Endereço não disponível'))
+      .finally(() => setBuscandoEndereco(false));
+  }, [usuario?.latitude, usuario?.longitude]);
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -145,9 +175,11 @@ export default function PerfilScreen() {
                 </View>
                 <View style={styles.casaTexto}>
                   <Text style={styles.casaLabel}>Casa</Text>
-                  <Text style={styles.casaValor}>
+                  <Text style={styles.casaValor} numberOfLines={2}>
                     {temCasaSalva
-                      ? `${usuario!.latitude!.toFixed(4)}, ${usuario!.longitude!.toFixed(4)}`
+                      ? buscandoEndereco
+                        ? 'Buscando endereço...'
+                        : enderecoСasa || 'Endereço não disponível'
                       : 'Não definida'}
                   </Text>
                 </View>
