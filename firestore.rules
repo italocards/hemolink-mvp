@@ -1,0 +1,43 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Usuários: apenas o próprio dono pode ler, criar e atualizar
+    match /users/{userId} {
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+
+      allow create: if request.auth != null
+                    && request.auth.uid == userId
+                    && request.resource.data.keys().hasAll(['id', 'nome', 'email', 'tipoSanguineo'])
+                    && request.resource.data.id == userId
+                    && request.resource.data.tipoSanguineo in ['A+','A-','B+','B-','AB+','AB-','O+','O-'];
+
+      allow delete: if false;
+    }
+
+    // Hemocentros: leitura para qualquer usuário autenticado, escrita bloqueada (somente via console/seed)
+    match /hemocentros/{hemocentroId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Solicitações: leitura para qualquer usuário autenticado, escrita bloqueada (somente via console/seed)
+    match /solicitacoes/{solicitacaoId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Respostas: criação e leitura apenas pelo próprio doador
+    match /respostas/{respostaId} {
+      allow create: if request.auth != null
+                    && request.resource.data.doadorId == request.auth.uid
+                    && request.resource.data.keys().hasAll(['solicitacaoId', 'doadorId', 'resposta', 'data'])
+                    && request.resource.data.resposta in ['aceita', 'recusada'];
+
+      allow read: if request.auth != null
+                  && resource.data.doadorId == request.auth.uid;
+
+      allow update, delete: if false;
+    }
+  }
+}
