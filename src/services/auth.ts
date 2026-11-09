@@ -26,6 +26,8 @@ export async function cadastrarUsuario(
     email,
     tipoSanguineo,
     ultimaDoacao,
+    pontos: 0,
+    titulo: '🩸 Iniciante',
   };
 
   await setDoc(doc(db, 'users', uid), novoUsuario);

@@ -14,6 +14,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useAuth } from '../hooks/useAuth';
 import { db } from '../services/firebase';
+import { concederBonusCasa } from '../services/pontuacao';
 import { Colors, DEFAULT_LOCATION } from '../constants';
 import { PerfilStackParamList } from '../types';
 
@@ -185,6 +186,9 @@ export default function DefinirCasaScreen({ navigation }: Props) {
         longitude: centerLon,
       });
       setUsuario({ ...usuario, latitude: centerLat, longitude: centerLon });
+
+      // Bônus de casa definida (uma vez)
+      concederBonusCasa(usuario.id).catch(() => {});
 
       Alert.alert(
         'Casa salva!',

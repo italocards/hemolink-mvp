@@ -7,7 +7,17 @@ export interface Usuario {
   ultimaDoacao: string | null; // ISO date string
   latitude?: number;
   longitude?: number;
+  pontos?: number;
+  titulo?: TituloDoador;
 }
+
+// ─── Títulos de doador ───────────────────────────────────────────────────────
+export type TituloDoador =
+  | '🩸 Iniciante'
+  | '💉 Doador'
+  | '❤️ Herói Local'
+  | '🏅 Guardião'
+  | '🌟 Lenda';
 
 // ─── Hemocentro ──────────────────────────────────────────────────────────────
 export interface Hemocentro {
@@ -63,6 +73,7 @@ export type MainTabParamList = {
   Home: undefined;
   Mapa: undefined;
   Solicitacoes: undefined;
+  Ranking: undefined;
   Perfil: undefined;
 };
 

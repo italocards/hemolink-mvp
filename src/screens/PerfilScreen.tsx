@@ -19,6 +19,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../hooks/useAuth';
 import { sair } from '../services/auth';
 import { db } from '../services/firebase';
+import { concederBonusPerfilCompleto } from '../services/pontuacao';
 import { Colors, TIPOS_SANGUINEOS } from '../constants';
 import { TipoSanguineo, PerfilStackParamList } from '../types';
 import InputCampo from '../components/InputCampo';
@@ -44,6 +45,12 @@ export default function PerfilScreen() {
       const atualizado = { nome: nome.trim(), tipoSanguineo, ultimaDoacao: ultimaDoacao || null };
       await updateDoc(doc(db, 'users', usuario.id), atualizado);
       setUsuario({ ...usuario, ...atualizado });
+
+      // Bônus de perfil completo (uma vez): tipo sanguíneo + última doação preenchidos
+      if (tipoSanguineo && ultimaDoacao) {
+        concederBonusPerfilCompleto(usuario.id).catch(() => {});
+      }
+
       setEditando(false);
     } catch {
       Alert.alert('Erro', 'Não foi possível salvar as alterações.');

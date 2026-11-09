@@ -2,32 +2,45 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Usuários: apenas o próprio dono pode ler, criar e atualizar
+    // ── Usuários ─────────────────────────────────────────────────────────────
     match /users/{userId} {
-      allow read, update: if request.auth != null && request.auth.uid == userId;
 
+      // Qualquer usuário autenticado pode LISTAR a coleção (necessário para o ranking)
+      allow list: if request.auth != null;
+
+      // Apenas o próprio dono pode LER o documento individual
+      allow get: if request.auth != null && request.auth.uid == userId;
+
+      // Apenas o próprio dono pode CRIAR seu documento (cadastro)
       allow create: if request.auth != null
                     && request.auth.uid == userId
                     && request.resource.data.keys().hasAll(['id', 'nome', 'email', 'tipoSanguineo'])
                     && request.resource.data.id == userId
                     && request.resource.data.tipoSanguineo in ['A+','A-','B+','B-','AB+','AB-','O+','O-'];
 
+      // Apenas o próprio dono pode ATUALIZAR seu documento
+      // (perfil, localização, pontos, titulo, flags de bônus)
+      allow update: if request.auth != null && request.auth.uid == userId;
+
       allow delete: if false;
     }
 
-    // Hemocentros: leitura para qualquer usuário autenticado, escrita bloqueada (somente via console/seed)
+    // ── Hemocentros ──────────────────────────────────────────────────────────
+    // Leitura para qualquer usuário autenticado; escrita bloqueada (somente via console/seed)
     match /hemocentros/{hemocentroId} {
       allow read: if request.auth != null;
       allow write: if false;
     }
 
-    // Solicitações: leitura para qualquer usuário autenticado, escrita bloqueada (somente via console/seed)
+    // ── Solicitações ─────────────────────────────────────────────────────────
+    // Leitura para qualquer usuário autenticado; escrita bloqueada (somente via console/seed)
     match /solicitacoes/{solicitacaoId} {
       allow read: if request.auth != null;
       allow write: if false;
     }
 
-    // Respostas: criação e leitura apenas pelo próprio doador
+    // ── Respostas ─────────────────────────────────────────────────────────────
+    // Criação e leitura apenas pelo próprio doador
     match /respostas/{respostaId} {
       allow create: if request.auth != null
                     && request.resource.data.doadorId == request.auth.uid

@@ -18,6 +18,7 @@ import {
   registrarResposta,
   verificarResposta,
 } from '../services/solicitacoes';
+import { adicionarPontos, PONTOS } from '../services/pontuacao';
 import { Colors, URGENCIA_LABELS, URGENCIA_COLORS, URGENCIA_LIGHT_COLORS } from '../constants';
 import { SolicitacoesStackParamList, Solicitacao, Hemocentro, Resposta } from '../types';
 
@@ -33,6 +34,7 @@ export default function DetalhesSolicitacaoScreen({ route, navigation }: Props) 
   const [carregando, setCarregando] = useState(true);
   const [enviando, setEnviando] = useState(false);
   const [modalSucesso, setModalSucesso] = useState(false);
+  const [doacaoConfirmada, setDoacaoConfirmada] = useState(false);
 
   useEffect(() => { carregarDetalhes(); }, [solicitacaoId]);
 
@@ -62,8 +64,13 @@ export default function DetalhesSolicitacaoScreen({ route, navigation }: Props) 
         id: 'local', solicitacaoId, doadorId: usuario.id,
         resposta, data: new Date().toISOString(),
       });
-      if (resposta === 'aceita') setModalSucesso(true);
-      else Alert.alert('Registrado', 'Sua resposta foi registrada. Obrigado por informar.');
+      if (resposta === 'aceita') {
+        // +20 pts por aceitar uma solicitação
+        adicionarPontos(usuario.id, PONTOS.ACEITAR_SOLICITACAO).catch(() => {});
+        setModalSucesso(true);
+      } else {
+        Alert.alert('Registrado', 'Sua resposta foi registrada. Obrigado por informar.');
+      }
     } catch {
       Alert.alert('Erro', 'Não foi possível registrar sua resposta.');
     } finally {
@@ -236,13 +243,43 @@ export default function DetalhesSolicitacaoScreen({ route, navigation }: Props) 
                 <Text style={styles.modalHemoHorario}>{hemocentro.horarioFuncionamento}</Text>
               </View>
             )}
-            <TouchableOpacity
-              style={styles.modalBotao}
-              onPress={() => setModalSucesso(false)}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.modalBotaoTexto}>Entendido</Text>
-            </TouchableOpacity>
+            {!doacaoConfirmada ? (
+              <>
+                <TouchableOpacity
+                  style={styles.modalBotao}
+                  onPress={() => {
+                    if (usuario?.id) {
+                      adicionarPontos(usuario.id, PONTOS.CONFIRMACAO_DOACAO).catch(() => {});
+                    }
+                    setDoacaoConfirmada(true);
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.modalBotaoTexto}>✓ Já doei! (+100 pts)</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalBotaoSecundario}
+                  onPress={() => setModalSucesso(false)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.modalBotaoSecundarioTexto}>Fechar</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <View style={styles.modalConfirmadoArea}>
+                  <Ionicons name="trophy" size={28} color="#D97706" />
+                  <Text style={styles.modalConfirmadoTexto}>+100 pontos adicionados!</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.modalBotao}
+                  onPress={() => setModalSucesso(false)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.modalBotaoTexto}>Fechar</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </View>
       </Modal>
@@ -426,4 +463,17 @@ const styles = StyleSheet.create({
     width: '100%', alignItems: 'center', justifyContent: 'center',
   },
   modalBotaoTexto: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  modalBotaoSecundario: {
+    borderRadius: 14, height: 44,
+    width: '100%', alignItems: 'center', justifyContent: 'center',
+    marginTop: 4,
+  },
+  modalBotaoSecundarioTexto: { fontSize: 15, fontWeight: '600', color: Colors.textSecondary },
+  modalConfirmadoArea: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#FEF3C7', borderRadius: 12,
+    paddingHorizontal: 16, paddingVertical: 10,
+    marginBottom: 12, width: '100%', justifyContent: 'center',
+  },
+  modalConfirmadoTexto: { fontSize: 15, fontWeight: '700', color: '#D97706' },
 });

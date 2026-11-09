@@ -6,6 +6,7 @@ import { Colors } from '../constants';
 import HomeScreen from '../screens/HomeScreen';
 import MapaScreen from '../screens/MapaScreen';
 import SolicitacoesStack from './SolicitacoesStack';
+import RankingScreen from '../screens/RankingScreen';
 import PerfilStack from './PerfilStack';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -36,6 +37,8 @@ export default function MainTabs() {
             iconName = focused ? 'map' : 'map-outline';
           } else if (route.name === 'Solicitacoes') {
             iconName = focused ? 'water' : 'water-outline';
+          } else if (route.name === 'Ranking') {
+            iconName = focused ? 'trophy' : 'trophy-outline';
           } else if (route.name === 'Perfil') {
             iconName = focused ? 'person' : 'person-outline';
           }
@@ -50,6 +53,7 @@ export default function MainTabs() {
         component={SolicitacoesStack}
         options={{ title: 'Solicitações' }}
       />
+      <Tab.Screen name="Ranking" component={RankingScreen} options={{ title: 'Ranking' }} />
       <Tab.Screen name="Perfil" component={PerfilStack} options={{ title: 'Perfil' }} />
     </Tab.Navigator>
   );
