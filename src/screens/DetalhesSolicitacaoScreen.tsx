@@ -19,6 +19,7 @@ import {
   verificarResposta,
 } from '../services/solicitacoes';
 import { adicionarPontos, PONTOS } from '../services/pontuacao';
+import ToastPontos from '../components/ToastPontos';
 import { Colors, URGENCIA_LABELS, URGENCIA_COLORS, URGENCIA_LIGHT_COLORS } from '../constants';
 import { SolicitacoesStackParamList, Solicitacao, Hemocentro, Resposta } from '../types';
 
@@ -35,6 +36,9 @@ export default function DetalhesSolicitacaoScreen({ route, navigation }: Props) 
   const [enviando, setEnviando] = useState(false);
   const [modalSucesso, setModalSucesso] = useState(false);
   const [doacaoConfirmada, setDoacaoConfirmada] = useState(false);
+  const [toastVisivel, setToastVisivel] = useState(false);
+  const [toastPontos, setToastPontos] = useState(0);
+  const [toastMensagem, setToastMensagem] = useState('');
 
   useEffect(() => { carregarDetalhes(); }, [solicitacaoId]);
 
@@ -67,6 +71,9 @@ export default function DetalhesSolicitacaoScreen({ route, navigation }: Props) 
       if (resposta === 'aceita') {
         // +20 pts por aceitar uma solicitação
         adicionarPontos(usuario.id, PONTOS.ACEITAR_SOLICITACAO).catch(() => {});
+        setToastPontos(PONTOS.ACEITAR_SOLICITACAO);
+        setToastMensagem('Você confirmou disponibilidade!');
+        setToastVisivel(true);
         setModalSucesso(true);
       } else {
         Alert.alert('Registrado', 'Sua resposta foi registrada. Obrigado por informar.');
@@ -106,6 +113,12 @@ export default function DetalhesSolicitacaoScreen({ route, navigation }: Props) 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+      <ToastPontos
+        visivel={toastVisivel}
+        pontos={toastPontos}
+        mensagem={toastMensagem}
+        onHide={() => setToastVisivel(false)}
+      />
 
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -252,6 +265,9 @@ export default function DetalhesSolicitacaoScreen({ route, navigation }: Props) 
                       adicionarPontos(usuario.id, PONTOS.CONFIRMACAO_DOACAO).catch(() => {});
                     }
                     setDoacaoConfirmada(true);
+                    setToastPontos(PONTOS.CONFIRMACAO_DOACAO);
+                    setToastMensagem('Doação confirmada! Parabéns!');
+                    setToastVisivel(true);
                   }}
                   activeOpacity={0.85}
                 >

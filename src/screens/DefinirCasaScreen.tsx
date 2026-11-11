@@ -14,9 +14,10 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useAuth } from '../hooks/useAuth';
 import { db } from '../services/firebase';
-import { concederBonusCasa } from '../services/pontuacao';
+import { concederBonusCasa, PONTOS, verificarBonusCasa } from '../services/pontuacao';
 import { Colors, DEFAULT_LOCATION } from '../constants';
 import { PerfilStackParamList } from '../types';
+import ToastPontos from '../components/ToastPontos';
 
 type Props = NativeStackScreenProps<PerfilStackParamList, 'DefinirCasa'>;
 
@@ -40,8 +41,6 @@ function gerarHTML(centerLat: number, centerLon: number, casaLat?: number, casaL
     * { margin:0; padding:0; box-sizing:border-box; }
     html, body, #map { width:100%; height:100%; }
     .leaflet-control-zoom, .leaflet-control-attribution { display:none !important; }
-
-    /* Marcador de casa */
     .casa-marker {
       width: 48px; height: 48px;
       background: #2E86C1;
@@ -56,8 +55,6 @@ function gerarHTML(centerLat: number, centerLon: number, casaLat?: number, casaL
       transform: rotate(45deg);
       fill: white;
     }
-
-    /* Crosshair central */
     #crosshair {
       position: fixed;
       top: 50%; left: 50%;
@@ -76,33 +73,21 @@ function gerarHTML(centerLat: number, centerLon: number, casaLat?: number, casaL
       <circle cx="24" cy="18" r="6" fill="white"/>
     </svg>
   </div>
-
   <script>
     var map = L.map('map', { zoomControl: false }).setView([${centerLat}, ${centerLon}], 15);
-
     L.tileLayer('https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=${MAPTILER_KEY}', {
       maxZoom: 20, crossOrigin: true
     }).addTo(map);
-
     var casaIcon = L.divIcon({
       html: '<div class="casa-marker"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></div>',
       className: '', iconSize: [48, 48], iconAnchor: [24, 48]
     });
-
     var casaMarker = null;
     ${marcadorCasa}
-
-    // Envia centro do mapa ao React Native quando o movimento para
     map.on('moveend', function() {
       var c = map.getCenter();
-      window.ReactNativeWebView.postMessage(JSON.stringify({
-        type: 'center',
-        lat: c.lat,
-        lon: c.lng
-      }));
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'center', lat: c.lat, lon: c.lng }));
     });
-
-    // Recebe comando para colocar marcador de casa
     document.addEventListener('message', function(e) {
       try {
         var data = JSON.parse(e.data);
@@ -136,16 +121,13 @@ export default function DefinirCasaScreen({ navigation }: Props) {
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [html, setHtml] = useState('');
+  const [toastVisivel, setToastVisivel] = useState(false);
 
-  useEffect(() => {
-    inicializar();
-  }, []);
+  useEffect(() => { inicializar(); }, []);
 
   async function inicializar() {
     let lat = usuario?.latitude ?? DEFAULT_LOCATION.latitude;
     let lon = usuario?.longitude ?? DEFAULT_LOCATION.longitude;
-
-    // Se não tem casa salva, começa pela localização atual
     if (!usuario?.latitude) {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === 'granted') {
@@ -154,7 +136,6 @@ export default function DefinirCasaScreen({ navigation }: Props) {
         lon = pos.coords.longitude;
       }
     }
-
     setCenterLat(lat);
     setCenterLon(lon);
     setHtml(gerarHTML(lat, lon, usuario?.latitude, usuario?.longitude));
@@ -175,7 +156,6 @@ export default function DefinirCasaScreen({ navigation }: Props) {
     if (!usuario?.id) return;
     setSalvando(true);
     try {
-      // Confirma marcador no mapa
       webViewRef.current?.injectJavaScript(`
         window.dispatchEvent(new MessageEvent('message', { data: JSON.stringify({ type: 'confirmar' }) }));
         true;
@@ -187,14 +167,18 @@ export default function DefinirCasaScreen({ navigation }: Props) {
       });
       setUsuario({ ...usuario, latitude: centerLat, longitude: centerLon });
 
-      // Bônus de casa definida (uma vez)
-      concederBonusCasa(usuario.id).catch(() => {});
+      // Verifica se vai ganhar pontos (primeira vez)
+      const jaRecebeu = await verificarBonusCasa(usuario.id);
+      await concederBonusCasa(usuario.id);
 
-      Alert.alert(
-        'Casa salva!',
-        'Sua localização residencial foi salva com sucesso.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
+      if (!jaRecebeu) {
+        // Mostra toast de pontos antes de navegar
+        setToastVisivel(true);
+        setTimeout(() => navigation.goBack(), 2500);
+      } else {
+        Alert.alert('Casa salva!', 'Sua localização residencial foi salva com sucesso.',
+          [{ text: 'OK', onPress: () => navigation.goBack() }]);
+      }
     } catch {
       Alert.alert('Erro', 'Não foi possível salvar a localização.');
     } finally {
@@ -213,15 +197,18 @@ export default function DefinirCasaScreen({ navigation }: Props) {
     const lon = pos.coords.longitude;
     setCenterLat(lat);
     setCenterLon(lon);
-    webViewRef.current?.injectJavaScript(`
-      map.setView([${lat}, ${lon}], 16);
-      true;
-    `);
+    webViewRef.current?.injectJavaScript(`map.setView([${lat}, ${lon}], 16); true;`);
   }
 
   return (
     <View style={styles.container}>
-      {/* Instrução */}
+      <ToastPontos
+        visivel={toastVisivel}
+        pontos={PONTOS.DEFINIR_CASA}
+        mensagem="Casa definida pela primeira vez!"
+        onHide={() => setToastVisivel(false)}
+      />
+
       <View style={styles.instrucao}>
         <Ionicons name="information-circle-outline" size={18} color={Colors.primary} />
         <Text style={styles.instrucaoTexto}>
@@ -229,7 +216,6 @@ export default function DefinirCasaScreen({ navigation }: Props) {
         </Text>
       </View>
 
-      {/* Mapa */}
       {carregando ? (
         <View style={styles.centro}>
           <ActivityIndicator size="large" color={Colors.primary} />
@@ -251,13 +237,11 @@ export default function DefinirCasaScreen({ navigation }: Props) {
         />
       )}
 
-      {/* Botões */}
       <View style={styles.rodape}>
         <TouchableOpacity style={styles.botaoSecundario} onPress={usarLocalizacaoAtual} activeOpacity={0.8}>
           <Ionicons name="navigate" size={18} color={Colors.primary} />
           <Text style={styles.botaoSecundarioTexto}>Usar minha localização</Text>
         </TouchableOpacity>
-
         <TouchableOpacity
           style={[styles.botaoPrimario, salvando && styles.botaoDesabilitado]}
           onPress={handleSalvar}

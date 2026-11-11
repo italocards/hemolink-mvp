@@ -19,7 +19,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../hooks/useAuth';
 import { sair } from '../services/auth';
 import { db } from '../services/firebase';
-import { concederBonusPerfilCompleto } from '../services/pontuacao';
+import { concederBonusPerfilCompleto, verificarBonusPerfilCompleto, PONTOS } from '../services/pontuacao';
+import ToastPontos from '../components/ToastPontos';
 import { Colors, TIPOS_SANGUINEOS } from '../constants';
 import { TipoSanguineo, PerfilStackParamList } from '../types';
 import InputCampo from '../components/InputCampo';
@@ -37,6 +38,8 @@ export default function PerfilScreen() {
   const [tipoSanguineo, setTipoSanguineo] = useState<TipoSanguineo | ''>(usuario?.tipoSanguineo ?? '');
   const [modalTipo, setModalTipo] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const [toastVisivel, setToastVisivel] = useState(false);
+  const [toastPontos, setToastPontos] = useState(0);
 
   async function handleSalvar() {
     if (!usuario?.id || !tipoSanguineo) return;
@@ -48,7 +51,12 @@ export default function PerfilScreen() {
 
       // Bônus de perfil completo (uma vez): tipo sanguíneo + última doação preenchidos
       if (tipoSanguineo && ultimaDoacao) {
-        concederBonusPerfilCompleto(usuario.id).catch(() => {});
+        const jaRecebeu = await verificarBonusPerfilCompleto(usuario.id);
+        await concederBonusPerfilCompleto(usuario.id);
+        if (!jaRecebeu) {
+          setToastPontos(PONTOS.PERFIL_COMPLETO);
+          setToastVisivel(true);
+        }
       }
 
       setEditando(false);
@@ -116,6 +124,12 @@ export default function PerfilScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
+      <ToastPontos
+        visivel={toastVisivel}
+        pontos={toastPontos}
+        mensagem="Perfil completo pela primeira vez!"
+        onHide={() => setToastVisivel(false)}
+      />
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
