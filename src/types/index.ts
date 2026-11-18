@@ -9,6 +9,8 @@ export interface Usuario {
   longitude?: number;
   pontos?: number;
   titulo?: TituloDoador;
+  pushToken?: string; // Token de notificação push (Expo)
+  pushTokenUpdatedAt?: string; // Data da última atualização do token
 }
 
 // ─── Títulos de doador ───────────────────────────────────────────────────────

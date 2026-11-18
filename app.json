@@ -49,6 +49,14 @@
         {
           "locationAlwaysAndWhenInUsePermission": "O HemoLink precisa da sua localização para encontrar hemocentros próximos."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#C0392B",
+          "sounds": []
+        }
       ]
     ]
   }

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User } from 'firebase/auth';
 import { observarAuth, buscarUsuario } from '../services/auth';
+import { registrarTokenPush } from '../services/notifications';
 import { Usuario } from '../types';
 
 interface AuthContextData {
@@ -23,6 +24,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (user) {
         const dados = await buscarUsuario(user.uid);
         setUsuario(dados);
+        
+        // Registrar token de push notification
+        if (dados) {
+          registrarTokenPush(user.uid).catch((err) => {
+            console.error('Erro ao registrar token de push:', err);
+          });
+        }
       } else {
         setUsuario(null);
       }

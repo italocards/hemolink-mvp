@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { buscarSolicitacoesHemocentro, buscarRespostasPorSolicitacoes, calcularMetricas } from '../services/solicitacoes';
-import { Solicitacao, Resposta, URGENCIA_LABELS, URGENCIA_COLORS } from '../types';
+import { URGENCIA_LABELS, URGENCIA_COLORS } from '../types';
+import type { Solicitacao, Resposta } from '../types';
 import MetricCard from '../components/MetricCard';
 
 export default function Dashboard() {
-  const { hemocentro } = useAuth();
+  const { user, hemocentro } = useAuth();
   const navigate = useNavigate();
   const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>([]);
   const [respostas, setRespostas] = useState<Resposta[]>([]);
@@ -14,14 +15,14 @@ export default function Dashboard() {
 
   useEffect(() => {
     carregarDados();
-  }, [hemocentro]);
+  }, [user]);
 
   async function carregarDados() {
-    if (!hemocentro?.id) return;
+    if (!user?.uid) return;
     
     setLoading(true);
     try {
-      const solic = await buscarSolicitacoesHemocentro(hemocentro.id);
+      const solic = await buscarSolicitacoesHemocentro(user.uid);
       setSolicitacoes(solic);
 
       const solicitacaoIds = solic.map((s) => s.id);
@@ -92,7 +93,7 @@ export default function Dashboard() {
           bgColor="bg-blue-50"
         />
         <MetricCard
-          title="Total de Aceites"
+          title="Confirmações"
           value={metricas.totalAceites}
           icon="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
           color="text-green-600"
@@ -156,7 +157,7 @@ export default function Dashboard() {
                         <span className="text-xs text-gray-500">{tempo}</span>
                       </div>
                       <p className="text-sm text-gray-600">
-                        {respostasCount} {respostasCount === 1 ? 'aceite' : 'aceites'}
+                        {respostasCount} {respostasCount === 1 ? 'confirmação' : 'confirmações'}
                       </p>
                     </div>
                     <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

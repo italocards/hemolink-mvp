@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, onSnapshot } from 'firebase/firestore';
 import { db } from '../services/firebase';
-import { buscarDetalhesSolicitacao, buscarHemocentro, encerrarSolicitacao, buscarDoadoresPorResposta } from '../services/solicitacoes';
-import { Solicitacao, Hemocentro, Resposta, Usuario, URGENCIA_LABELS, URGENCIA_COLORS } from '../types';
+import { buscarDetalhesSolicitacao, buscarHemocentro, encerrarSolicitacao } from '../services/solicitacoes';
+import { URGENCIA_LABELS, URGENCIA_COLORS } from '../types';
+import type { Solicitacao, Hemocentro, Candidato } from '../types';
 
 export default function DetalhesSolicitacao() {
   const { id } = useParams<{ id: string }>();
@@ -11,25 +12,28 @@ export default function DetalhesSolicitacao() {
   
   const [solicitacao, setSolicitacao] = useState<Solicitacao | null>(null);
   const [hemocentro, setHemocentro] = useState<Hemocentro | null>(null);
-  const [respostas, setRespostas] = useState<Resposta[]>([]);
-  const [doadores, setDoadores] = useState<Usuario[]>([]);
+  const [candidatos, setCandidatos] = useState<Candidato[]>([]);
   const [loading, setLoading] = useState(true);
   const [encerrando, setEncerrando] = useState(false);
-  const [doadorSelecionado, setDoadorSelecionado] = useState<Usuario | null>(null);
+  const [candidatoSelecionado, setCandidatoSelecionado] = useState<Candidato | null>(null);
 
   useEffect(() => {
     if (!id) return;
     carregarDados();
     
-    // Listener em tempo real para respostas
-    const q = query(collection(db, 'respostas'), where('solicitacaoId', '==', id));
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
-      const resps = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Resposta));
-      setRespostas(resps);
+    // Listener em tempo real para candidatos (subcoleção)
+    const candidatosRef = collection(db, 'solicitacoes', id, 'candidatos');
+    const q = query(candidatosRef);
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const cands = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      } as Candidato));
       
-      // Buscar dados dos doadores que responderam
-      const doads = await buscarDoadoresPorResposta(resps);
-      setDoadores(doads as Usuario[]);
+      // Ordenar por score (maior primeiro)
+      cands.sort((a, b) => (b.score || 0) - (a.score || 0));
+      
+      setCandidatos(cands);
     });
 
     return () => unsubscribe();
@@ -101,15 +105,9 @@ export default function DetalhesSolicitacao() {
     minute: '2-digit',
   });
 
-  const respostasAceitas = respostas.filter((r) => r.resposta === 'aceita');
-  const respostasRecusadas = respostas.filter((r) => r.resposta === 'recusada');
-  const pendentes = 0; // Por enquanto não temos sistema de "visualizou mas não respondeu"
-
-  // Preparar lista de candidatos com dados dos doadores
-  const candidatos = respostas.map((resposta) => {
-    const doador = doadores.find((d) => d.id === resposta.doadorId);
-    return { resposta, doador };
-  }).filter((c) => c.doador); // Remove respostas sem doador encontrado
+  const candidatosAceitos = candidatos.filter((c) => c.status === 'aceitou');
+  const candidatosRecusados = candidatos.filter((c) => c.status === 'recusou');
+  const candidatosPendentes = candidatos.filter((c) => c.status === 'pendente' || c.status === 'notificado' || c.status === 'visualizou');
 
   return (
     <div className="p-8 space-y-6">
@@ -188,16 +186,16 @@ export default function DetalhesSolicitacao() {
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Resumo</h2>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-gray-600">Total de aceites</span>
-                <span className="font-bold text-green-600 text-lg">{respostasAceitas.length}</span>
+                <span className="text-gray-600">Confirmações</span>
+                <span className="font-bold text-green-600 text-lg">{candidatosAceitos.length}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">Recusaram</span>
-                <span className="font-semibold text-gray-900">{respostasRecusadas.length}</span>
+                <span className="font-semibold text-gray-900">{candidatosRecusados.length}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">Pendentes</span>
-                <span className="font-semibold text-gray-900">{pendentes}</span>
+                <span className="font-semibold text-gray-900">{candidatosPendentes.length}</span>
               </div>
             </div>
           </div>
@@ -231,58 +229,83 @@ export default function DetalhesSolicitacao() {
                   <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                   </svg>
-                  <p className="text-gray-500">Nenhum doador respondeu ainda</p>
+                  <p className="text-gray-500">Aguardando classificação de candidatos...</p>
                 </div>
               ) : (
-                candidatos.map(({ resposta, doador }) => {
-                  if (!doador) return null;
+                candidatos.map((candidato, index) => {
+                  const rank = index + 1;
+                  const statusInfo = {
+                    pendente: { label: 'Não notificado', color: 'bg-gray-100 text-gray-800', icon: '○' },
+                    notificado: { label: 'Notificado', color: 'bg-blue-100 text-blue-800', icon: '◉' },
+                    visualizou: { label: 'Visualizou', color: 'bg-yellow-100 text-yellow-800', icon: '👁' },
+                    aceitou: { label: 'Aceitou', color: 'bg-green-100 text-green-800', icon: '✓' },
+                    recusou: { label: 'Recusou', color: 'bg-red-100 text-red-800', icon: '✕' },
+                  };
                   
-                  const aceitou = resposta.resposta === 'aceita';
+                  const status = statusInfo[candidato.status] || statusInfo.pendente;
                   
                   return (
                     <div
-                      key={resposta.id}
+                      key={candidato.id}
                       className="p-4 hover:bg-gray-50 transition-colors flex items-center gap-4"
                     >
-                      {/* Avatar/Ícone */}
-                      <div className={`w-12 h-12 rounded-full flex items-center justify-center ${aceitou ? 'bg-green-100' : 'bg-red-100'}`}>
-                        <svg className={`w-6 h-6 ${aceitou ? 'text-green-600' : 'text-red-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          {aceitou ? (
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          ) : (
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          )}
-                        </svg>
+                      {/* Rank */}
+                      <div className="w-10 flex-shrink-0 text-center">
+                        <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${
+                          rank === 1 ? 'bg-yellow-100 text-yellow-800' :
+                          rank === 2 ? 'bg-gray-200 text-gray-700' :
+                          rank === 3 ? 'bg-orange-100 text-orange-700' :
+                          'bg-gray-100 text-gray-600'
+                        }`}>
+                          {rank <= 3 ? (rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉') : rank}
+                        </div>
                       </div>
 
                       {/* Info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <p className="font-semibold text-gray-900 truncate">{doador.nome}</p>
+                          <p className="font-semibold text-gray-900 truncate">{candidato.nome}</p>
                           <span className="text-xs font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
-                            {doador.tipoSanguineo}
+                            {candidato.tipoSanguineo}
                           </span>
+                          {candidato.lote && (
+                            <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                              Lote {candidato.lote}
+                            </span>
+                          )}
                         </div>
-                        <p className="text-sm text-gray-600">
-                          {doador.pontos || 0} pts • {doador.titulo || '🩸 Iniciante'}
-                        </p>
+                        <div className="flex items-center gap-3 text-sm text-gray-600">
+                          <span>{candidato.pontos} pts</span>
+                          <span>•</span>
+                          <span>{candidato.titulo}</span>
+                          {candidato.distancia !== undefined && (
+                            <>
+                              <span>•</span>
+                              <span>{candidato.distancia.toFixed(1)} km</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Score */}
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-primary">{candidato.score?.toFixed(1) || '0.0'}</div>
+                        <div className="text-xs text-gray-500">score</div>
                       </div>
 
                       {/* Status */}
-                      <div className="text-right">
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
-                          aceitou ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
-                          {aceitou ? '✓ Aceitou' : '✕ Recusou'}
+                      <div className="text-right min-w-[100px]">
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${status.color}`}>
+                          {status.icon} {status.label}
                         </span>
                       </div>
 
                       {/* Botão ver mais */}
                       <button
-                        onClick={() => setDoadorSelecionado(doador)}
+                        onClick={() => setCandidatoSelecionado(candidato)}
                         className="text-primary hover:text-primary/80 font-semibold text-sm"
                       >
-                        Ver mais →
+                        Ver →
                       </button>
                     </div>
                   );
@@ -297,23 +320,23 @@ export default function DetalhesSolicitacao() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <div>
-              <p className="font-semibold text-blue-900 text-sm">Lote de notificação</p>
+              <p className="font-semibold text-blue-900 text-sm">Classificação Inteligente</p>
               <p className="text-blue-800 text-sm mt-1">
-                O sistema de classificação e notificação em lotes será implementado no próximo semestre.
-                Por enquanto, todos os doadores compatíveis recebem a notificação simultaneamente.
+                Os candidatos são classificados por um score que combina proximidade geográfica, histórico de doações e disponibilidade.
+                Esta é uma versão de demonstração. O algoritmo completo será implementado no próximo semestre.
               </p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Drawer simples para detalhes do doador */}
-      {doadorSelecionado && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setDoadorSelecionado(null)}>
+      {/* Drawer simples para detalhes do candidato */}
+      {candidatoSelecionado && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setCandidatoSelecionado(null)}>
           <div className="bg-white rounded-xl p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-900">{doadorSelecionado.nome}</h3>
-              <button onClick={() => setDoadorSelecionado(null)} className="text-gray-400 hover:text-gray-600">
+              <h3 className="text-xl font-bold text-gray-900">{candidatoSelecionado.nome}</h3>
+              <button onClick={() => setCandidatoSelecionado(null)} className="text-gray-400 hover:text-gray-600">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -322,25 +345,45 @@ export default function DetalhesSolicitacao() {
             
             <div className="space-y-3">
               <div className="flex items-center justify-between py-2 border-b border-gray-200">
+                <span className="text-gray-600">Score</span>
+                <span className="font-bold text-primary text-lg">{candidatoSelecionado.score?.toFixed(1) || '0.0'}</span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-gray-200">
                 <span className="text-gray-600">Tipo sanguíneo</span>
-                <span className="font-semibold text-gray-900">{doadorSelecionado.tipoSanguineo}</span>
+                <span className="font-semibold text-gray-900">{candidatoSelecionado.tipoSanguineo}</span>
               </div>
               <div className="flex items-center justify-between py-2 border-b border-gray-200">
                 <span className="text-gray-600">Pontuação</span>
-                <span className="font-semibold text-gray-900">{doadorSelecionado.pontos || 0} pts</span>
+                <span className="font-semibold text-gray-900">{candidatoSelecionado.pontos} pts</span>
               </div>
               <div className="flex items-center justify-between py-2 border-b border-gray-200">
                 <span className="text-gray-600">Título</span>
-                <span className="font-semibold text-gray-900">{doadorSelecionado.titulo || '🩸 Iniciante'}</span>
+                <span className="font-semibold text-gray-900">{candidatoSelecionado.titulo}</span>
               </div>
-              {doadorSelecionado.ultimaDoacao && (
+              {candidatoSelecionado.distancia !== undefined && (
+                <div className="flex items-center justify-between py-2 border-b border-gray-200">
+                  <span className="text-gray-600">Distância</span>
+                  <span className="font-semibold text-gray-900">{candidatoSelecionado.distancia.toFixed(1)} km</span>
+                </div>
+              )}
+              {candidatoSelecionado.ultimaDoacao && (
                 <div className="flex items-center justify-between py-2 border-b border-gray-200">
                   <span className="text-gray-600">Última doação</span>
                   <span className="font-semibold text-gray-900">
-                    {new Date(doadorSelecionado.ultimaDoacao).toLocaleDateString('pt-BR')}
+                    {new Date(candidatoSelecionado.ultimaDoacao).toLocaleDateString('pt-BR')}
                   </span>
                 </div>
               )}
+              {candidatoSelecionado.lote && (
+                <div className="flex items-center justify-between py-2 border-b border-gray-200">
+                  <span className="text-gray-600">Lote de notificação</span>
+                  <span className="font-semibold text-blue-600">Lote {candidatoSelecionado.lote}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between py-2">
+                <span className="text-gray-600">Status</span>
+                <span className="font-semibold text-gray-900 capitalize">{candidatoSelecionado.status}</span>
+              </div>
             </div>
           </div>
         </div>

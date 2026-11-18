@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { buscarSolicitacoesHemocentro, buscarRespostasPorSolicitacoes } from '../services/solicitacoes';
-import { Solicitacao, Resposta, TipoSanguineo, NivelUrgencia, StatusSolicitacao, URGENCIA_LABELS, URGENCIA_COLORS } from '../types';
+import { URGENCIA_LABELS, URGENCIA_COLORS } from '../types';
+import type { Solicitacao, Resposta, TipoSanguineo, NivelUrgencia, StatusSolicitacao } from '../types';
 
 export default function Solicitacoes() {
-  const { hemocentro } = useAuth();
+  const { user, hemocentro } = useAuth();
   const navigate = useNavigate();
   const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>([]);
   const [respostas, setRespostas] = useState<Resposta[]>([]);
@@ -18,14 +19,14 @@ export default function Solicitacoes() {
 
   useEffect(() => {
     carregarDados();
-  }, [hemocentro]);
+  }, [user]);
 
   async function carregarDados() {
-    if (!hemocentro?.id) return;
+    if (!user?.uid) return;
     
     setLoading(true);
     try {
-      const solic = await buscarSolicitacoesHemocentro(hemocentro.id);
+      const solic = await buscarSolicitacoesHemocentro(user.uid);
       setSolicitacoes(solic);
 
       const solicitacaoIds = solic.map((s) => s.id);
@@ -46,7 +47,7 @@ export default function Solicitacoes() {
     return true;
   });
 
-  const contarAceites = (solicitacaoId: string) => {
+  const contarConfirmacoes = (solicitacaoId: string) => {
     return respostas.filter((r) => r.solicitacaoId === solicitacaoId && r.resposta === 'aceita').length;
   };
 
@@ -164,7 +165,7 @@ export default function Solicitacoes() {
                     Status
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Aceites
+                    Confirmações
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     Data
@@ -176,7 +177,7 @@ export default function Solicitacoes() {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {solicitacoesFiltradas.map((solic) => {
-                  const aceites = contarAceites(solic.id);
+                  const confirmacoes = contarConfirmacoes(solic.id);
                   const urgColor = URGENCIA_COLORS[solic.urgencia];
                   const dataFormatada = new Date(solic.data).toLocaleDateString('pt-BR', {
                     day: '2-digit',
@@ -227,8 +228,8 @@ export default function Solicitacoes() {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-semibold text-gray-900">{aceites}</span>
-                        <span className="text-sm text-gray-500 ml-1">{aceites === 1 ? 'aceite' : 'aceites'}</span>
+                        <span className="text-sm font-semibold text-gray-900">{confirmacoes}</span>
+                        <span className="text-sm text-gray-500 ml-1">{confirmacoes === 1 ? 'confirmação' : 'confirmações'}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         {dataFormatada}

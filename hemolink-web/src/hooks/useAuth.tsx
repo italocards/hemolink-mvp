@@ -1,13 +1,14 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { 
   signInWithEmailAndPassword, 
   signOut as firebaseSignOut,
   onAuthStateChanged,
-  User as FirebaseUser
+  type User as FirebaseUser
 } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
-import { Hemocentro } from '../types';
+import type { Hemocentro } from '../types';
 
 interface AuthContextType {
   user: FirebaseUser | null;
@@ -29,14 +30,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(firebaseUser);
       
       if (firebaseUser) {
-        // Buscar dados do hemocentro pelo ownerId
+        // Busca hemocentro onde ownerId == uid do usuário autenticado
         try {
-          const hemocentrosRef = await getDoc(doc(db, 'hemocentros', firebaseUser.uid));
-          if (hemocentrosRef.exists()) {
-            setHemocentro({ id: hemocentrosRef.id, ...hemocentrosRef.data() } as Hemocentro);
+          const q = query(
+            collection(db, 'hemocentros'),
+            where('ownerId', '==', firebaseUser.uid)
+          );
+          const snapshot = await getDocs(q);
+          if (!snapshot.empty) {
+            const docSnap = snapshot.docs[0];
+            setHemocentro({ id: docSnap.id, ...docSnap.data() } as Hemocentro);
           } else {
-            // Se não encontrou por ID direto, busca onde ownerId == uid
-            // Por enquanto vamos assumir que o ID do documento é o ownerId
             setHemocentro(null);
           }
         } catch (error) {

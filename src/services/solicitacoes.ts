@@ -56,9 +56,14 @@ export async function buscarDetalhesSolicitacao(
 
   let hemocentro: Hemocentro | null = null;
   if (solicitacao.hemocentroId) {
-    const hemoSnap = await getDoc(doc(db, 'hemocentros', solicitacao.hemocentroId));
-    if (hemoSnap.exists()) {
-      hemocentro = { id: hemoSnap.id, ...hemoSnap.data() } as Hemocentro;
+    // Buscar hemocentro pelo ownerId (que agora é igual ao hemocentroId da solicitação)
+    const hemoQuery = query(
+      collection(db, 'hemocentros'),
+      where('ownerId', '==', solicitacao.hemocentroId)
+    );
+    const hemoSnap = await getDocs(hemoQuery);
+    if (!hemoSnap.empty) {
+      hemocentro = { id: hemoSnap.docs[0].id, ...hemoSnap.docs[0].data() } as Hemocentro;
     }
   }
 
@@ -78,6 +83,22 @@ export async function registrarResposta(
     data: new Date().toISOString(),
   };
   await addDoc(collection(db, 'respostas'), novaResposta);
+  
+  // Atualizar status na subcoleção candidatos (para o painel web)
+  try {
+    const candidatoRef = doc(db, 'solicitacoes', solicitacaoId, 'candidatos', doadorId);
+    const candidatoSnap = await getDoc(candidatoRef);
+    
+    if (candidatoSnap.exists()) {
+      const { updateDoc } = await import('firebase/firestore');
+      await updateDoc(candidatoRef, {
+        status: resposta === 'aceita' ? 'aceitou' : 'recusou',
+      });
+    }
+  } catch (error) {
+    console.error('Erro ao atualizar status do candidato:', error);
+    // Não bloqueia a resposta se falhar
+  }
 }
 
 // ─── Buscar todos os hemocentros ──────────────────────────────────────────────

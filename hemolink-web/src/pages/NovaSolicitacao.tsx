@@ -1,19 +1,20 @@
-import { useState, FormEvent } from 'react';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { criarSolicitacao } from '../services/solicitacoes';
-import { TipoSanguineo, NivelUrgencia, URGENCIA_LABELS, URGENCIA_COLORS } from '../types';
+import { URGENCIA_LABELS, URGENCIA_COLORS } from '../types';
+import type { TipoSanguineo, NivelUrgencia } from '../types';
 
 const TIPOS_SANGUINEOS: (TipoSanguineo | 'todos')[] = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'todos'];
 const NIVEIS_URGENCIA: NivelUrgencia[] = ['baixa', 'media', 'alta', 'critica'];
 
 export default function NovaSolicitacao() {
-  const { hemocentro } = useAuth();
+  const { user, hemocentro } = useAuth();
   const navigate = useNavigate();
   
   const [tipoSelecionado, setTipoSelecionado] = useState<TipoSanguineo | 'todos' | null>(null);
   const [urgenciaSelecionada, setUrgenciaSelecionada] = useState<NivelUrgencia | null>(null);
-  const [algoritmoSelecionado, setAlgoritmoSelecionado] = useState<'proximidade' | 'historico' | 'combinado'>('combinado');
   const [loteInicial, setLoteInicial] = useState(50);
   const [intervalo, setIntervalo] = useState(30);
   const [loading, setLoading] = useState(false);
@@ -32,7 +33,7 @@ export default function NovaSolicitacao() {
       return;
     }
 
-    if (!hemocentro?.id) {
+    if (!user?.uid) {
       setError('Erro ao identificar hemocentro');
       return;
     }
@@ -42,9 +43,10 @@ export default function NovaSolicitacao() {
 
     try {
       const solicitacaoId = await criarSolicitacao(
-        hemocentro.id,
+        user.uid, // Usar user.uid ao invés de hemocentro.id
         tipoSelecionado,
-        urgenciaSelecionada
+        urgenciaSelecionada,
+        loteInicial
       );
       
       // Redirecionar para a lista ou para os detalhes
@@ -121,7 +123,6 @@ export default function NovaSolicitacao() {
                   style={{
                     backgroundColor: urgenciaSelecionada === urgencia ? cor : `${cor}20`,
                     color: urgenciaSelecionada === urgencia ? '#fff' : cor,
-                    ringColor: cor,
                   }}
                 >
                   <span
@@ -135,7 +136,7 @@ export default function NovaSolicitacao() {
           </div>
         </div>
 
-        {/* Seção de Classificação (Design completo, funcionalidade desabilitada) */}
+        {/* Seção de Classificação */}
         <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
           <div className="flex items-start gap-3 mb-4">
             <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
@@ -146,66 +147,13 @@ export default function NovaSolicitacao() {
             <div className="flex-1">
               <h2 className="text-lg font-semibold text-gray-900">Classificação de Doadores</h2>
               <p className="text-sm text-gray-600 mt-1">
-                Selecione como os doadores serão priorizados e notificados
+                Nosso modelo combina proximidade, histórico e disponibilidade para otimizar a taxa de resposta
               </p>
             </div>
           </div>
 
-          {/* Opções de algoritmo */}
-          <div className="space-y-3 mb-6 opacity-60 pointer-events-none">
-            <label className="flex items-start gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-not-allowed">
-              <input
-                type="radio"
-                name="algoritmo"
-                value="proximidade"
-                checked={algoritmoSelecionado === 'proximidade'}
-                onChange={(e) => setAlgoritmoSelecionado(e.target.value as any)}
-                disabled
-                className="mt-1"
-              />
-              <div>
-                <p className="font-semibold text-gray-900">Por proximidade geográfica</p>
-                <p className="text-sm text-gray-600">Prioriza doadores mais próximos ao hemocentro</p>
-              </div>
-            </label>
-
-            <label className="flex items-start gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-not-allowed">
-              <input
-                type="radio"
-                name="algoritmo"
-                value="historico"
-                checked={algoritmoSelecionado === 'historico'}
-                onChange={(e) => setAlgoritmoSelecionado(e.target.value as any)}
-                disabled
-                className="mt-1"
-              />
-              <div>
-                <p className="font-semibold text-gray-900">Por histórico de doações</p>
-                <p className="text-sm text-gray-600">Prioriza doadores com maior frequência de doações</p>
-              </div>
-            </label>
-
-            <label className="flex items-start gap-3 p-4 border-2 border-primary rounded-lg cursor-not-allowed">
-              <input
-                type="radio"
-                name="algoritmo"
-                value="combinado"
-                checked={algoritmoSelecionado === 'combinado'}
-                onChange={(e) => setAlgoritmoSelecionado(e.target.value as any)}
-                disabled
-                className="mt-1"
-              />
-              <div>
-                <p className="font-semibold text-gray-900">Score combinado (recomendado)</p>
-                <p className="text-sm text-gray-600">
-                  Combina proximidade, histórico e disponibilidade para otimizar a taxa de resposta
-                </p>
-              </div>
-            </label>
-          </div>
-
           {/* Configurações de lote */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 opacity-60 pointer-events-none">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Lote inicial de doadores
@@ -213,14 +161,14 @@ export default function NovaSolicitacao() {
               <select
                 value={loteInicial}
                 onChange={(e) => setLoteInicial(Number(e.target.value))}
-                disabled
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
               >
                 <option value={20}>20 doadores</option>
                 <option value={50}>50 doadores</option>
                 <option value={100}>100 doadores</option>
                 <option value={200}>200 doadores</option>
               </select>
+              <p className="text-xs text-gray-500 mt-1">Quantidade de doadores notificados inicialmente</p>
             </div>
 
             <div>
@@ -230,28 +178,14 @@ export default function NovaSolicitacao() {
               <select
                 value={intervalo}
                 onChange={(e) => setIntervalo(Number(e.target.value))}
-                disabled
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
               >
                 <option value={15}>15 minutos</option>
                 <option value={30}>30 minutos</option>
                 <option value={60}>1 hora</option>
                 <option value={120}>2 horas</option>
               </select>
-            </div>
-          </div>
-
-          {/* Aviso de desenvolvimento */}
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
-            <svg className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <div className="flex-1">
-              <p className="font-semibold text-yellow-900 text-sm">Funcionalidade em Desenvolvimento</p>
-              <p className="text-yellow-800 text-sm mt-1">
-                O algoritmo de classificação e notificação em lotes será implementado no próximo semestre.
-                Por enquanto, a solicitação será criada e ficará disponível para todos os doadores compatíveis.
-              </p>
+              <p className="text-xs text-gray-500 mt-1">Tempo de espera antes de notificar o próximo lote</p>
             </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
-import { collection, query, where, getDocs, orderBy, limit, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
-import { Solicitacao, Resposta, Hemocentro } from '../types';
+import type { Solicitacao, Resposta, Hemocentro } from '../types';
 
 /**
  * Busca todas as solicitações de um hemocentro
@@ -9,11 +9,15 @@ export async function buscarSolicitacoesHemocentro(hemocentroId: string): Promis
   try {
     const q = query(
       collection(db, 'solicitacoes'),
-      where('hemocentroId', '==', hemocentroId),
-      orderBy('data', 'desc')
+      where('hemocentroId', '==', hemocentroId)
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Solicitacao));
+    const solicitacoes = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Solicitacao));
+    
+    // Ordenar manualmente no cliente
+    solicitacoes.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+    
+    return solicitacoes;
   } catch (error) {
     console.error('Erro ao buscar solicitações:', error);
     return [];
@@ -92,25 +96,50 @@ export function calcularMetricas(solicitacoes: Solicitacao[], respostas: Respost
 }
 
 /**
- * Cria uma nova solicitação no Firestore
+ * Cria uma nova solicitação no Firestore e gera classificação de candidatos
  */
 export async function criarSolicitacao(
-  hemocentroId: string,
+  userUid: string, // UID do Firebase Auth (ownerId do hemocentro)
   tipoSanguineo: string,
-  urgencia: string
+  urgencia: string,
+  loteInicial: number = 50
 ): Promise<string> {
   try {
     const { addDoc, collection } = await import('firebase/firestore');
+    const { gerarClassificacaoMock } = await import('./classificacao');
     
     const novaSolicitacao = {
       tipoSanguineo,
       urgencia,
-      hemocentroId,
+      hemocentroId: userUid, // Salvar o UID do Firebase Auth
       data: new Date().toISOString(),
       status: 'pendente',
     };
 
     const docRef = await addDoc(collection(db, 'solicitacoes'), novaSolicitacao);
+    
+    // Buscar hemocentro pelo ownerId (userUid)
+    const hemocentrosRef = collection(db, 'hemocentros');
+    const q = query(hemocentrosRef, where('ownerId', '==', userUid));
+    const snapshot = await getDocs(q);
+    
+    if (!snapshot.empty) {
+      const hemocentro = { 
+        id: snapshot.docs[0].id, 
+        ...snapshot.docs[0].data() 
+      } as Hemocentro;
+      
+      // Gerar classificação mock em segundo plano
+      gerarClassificacaoMock(
+        docRef.id,
+        hemocentro,
+        tipoSanguineo as any,
+        loteInicial
+      ).catch((err) => {
+        console.error('Erro ao gerar classificação:', err);
+      });
+    }
+    
     return docRef.id;
   } catch (error) {
     console.error('Erro ao criar solicitação:', error);
