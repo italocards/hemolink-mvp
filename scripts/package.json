@@ -1,0 +1,12 @@
+{
+  "name": "hemolink-scripts",
+  "version": "1.0.0",
+  "description": "Scripts utilitários para o HemoLink",
+  "main": "seed-usuarios.js",
+  "scripts": {
+    "seed": "node seed-usuarios.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  }
+}

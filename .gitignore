@@ -26,3 +26,7 @@ yarn-error.log*
 
 # TypeScript
 *.tsbuildinfo
+
+# Chaves privadas do Firebase (NUNCA commitar!)
+scripts/serviceAccountKey.json
+serviceAccountKey.json
