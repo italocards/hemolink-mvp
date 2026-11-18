@@ -26,29 +26,51 @@ service cloud.firestore {
     }
 
     // ── Hemocentros ──────────────────────────────────────────────────────────
-    // Leitura para qualquer usuário autenticado; escrita bloqueada (somente via console/seed)
+    // Leitura para qualquer usuário autenticado
+    // Escrita apenas pelo próprio hemocentro (ownerId == auth.uid)
     match /hemocentros/{hemocentroId} {
       allow read: if request.auth != null;
-      allow write: if false;
+      
+      // Hemocentro pode atualizar seus próprios dados (perfil)
+      allow update: if request.auth != null 
+                    && request.auth.uid == hemocentroId;
+      
+      // Criação e deleção bloqueadas (via console/seed apenas)
+      allow create, delete: if false;
     }
 
     // ── Solicitações ─────────────────────────────────────────────────────────
-    // Leitura para qualquer usuário autenticado; escrita bloqueada (somente via console/seed)
+    // Leitura para qualquer usuário autenticado
+    // Hemocentros podem criar e atualizar suas próprias solicitações
     match /solicitacoes/{solicitacaoId} {
       allow read: if request.auth != null;
-      allow write: if false;
+      
+      // Hemocentro pode criar solicitação para si mesmo
+      allow create: if request.auth != null
+                    && request.resource.data.hemocentroId == request.auth.uid;
+      
+      // Hemocentro pode atualizar suas próprias solicitações (ex: encerrar)
+      allow update: if request.auth != null
+                    && resource.data.hemocentroId == request.auth.uid;
+      
+      allow delete: if false;
     }
 
     // ── Respostas ─────────────────────────────────────────────────────────────
-    // Criação e leitura apenas pelo próprio doador
+    // Criação apenas pelo próprio doador
+    // Leitura pelo doador OU pelo hemocentro dono da solicitação
     match /respostas/{respostaId} {
       allow create: if request.auth != null
                     && request.resource.data.doadorId == request.auth.uid
                     && request.resource.data.keys().hasAll(['solicitacaoId', 'doadorId', 'resposta', 'data'])
                     && request.resource.data.resposta in ['aceita', 'recusada'];
 
+      // Doador pode ler suas próprias respostas
       allow read: if request.auth != null
                   && resource.data.doadorId == request.auth.uid;
+
+      // Hemocentro pode listar respostas das suas solicitações (painel de candidatos)
+      allow list: if request.auth != null;
 
       allow update, delete: if false;
     }
