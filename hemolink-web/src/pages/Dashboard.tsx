@@ -35,13 +35,6 @@ export default function Dashboard() {
     }
   }
 
-  const saudacao = () => {
-    const h = new Date().getHours();
-    if (h < 12) return 'Bom dia';
-    if (h < 18) return 'Boa tarde';
-    return 'Boa noite';
-  };
-
   const metricas = calcularMetricas(solicitacoes, respostas);
   const solicitacoesRecentes = solicitacoes.slice(0, 5);
 
@@ -70,10 +63,13 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            {saudacao()}, {hemocentro?.nome?.split(' ')[0] || 'Hemocentro'}!
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Painel de Gestão</p>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {hemocentro?.nome || 'Hemocentro'}
           </h1>
-          <p className="text-gray-600 mt-1">Aqui está um resumo das suas solicitações</p>
+          {hemocentro?.endereco && (
+            <p className="text-sm text-gray-500 mt-0.5">{hemocentro.endereco}</p>
+          )}
         </div>
         <button
           onClick={() => navigate('/solicitacoes')}
