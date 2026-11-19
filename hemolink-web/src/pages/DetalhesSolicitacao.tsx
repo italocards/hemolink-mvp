@@ -234,78 +234,72 @@ export default function DetalhesSolicitacao() {
               ) : (
                 candidatos.map((candidato, index) => {
                   const rank = index + 1;
-                  const statusInfo = {
-                    pendente: { label: 'Não notificado', color: 'bg-gray-100 text-gray-800', icon: '○' },
-                    notificado: { label: 'Notificado', color: 'bg-blue-100 text-blue-800', icon: '◉' },
-                    visualizou: { label: 'Visualizou', color: 'bg-yellow-100 text-yellow-800', icon: '👁' },
-                    aceitou: { label: 'Aceitou', color: 'bg-green-100 text-green-800', icon: '✓' },
-                    recusou: { label: 'Recusou', color: 'bg-red-100 text-red-800', icon: '✕' },
+                  const statusInfo: Record<string, { label: string; color: string }> = {
+                    pendente:   { label: 'Não notificado', color: 'bg-gray-100 text-gray-600'   },
+                    notificado: { label: 'Notificado',     color: 'bg-blue-100 text-blue-700'   },
+                    visualizou: { label: 'Visualizou',     color: 'bg-yellow-100 text-yellow-700' },
+                    aceitou:    { label: 'Confirmado',     color: 'bg-green-100 text-green-700' },
+                    recusou:    { label: 'Recusou',        color: 'bg-red-100 text-red-700'     },
                   };
-                  
                   const status = statusInfo[candidato.status] || statusInfo.pendente;
-                  
+
                   return (
                     <div
                       key={candidato.id}
-                      className="p-4 hover:bg-gray-50 transition-colors flex items-center gap-4"
+                      className="px-6 py-4 hover:bg-gray-50 transition-colors flex items-center gap-4"
                     >
-                      {/* Rank */}
-                      <div className="w-10 flex-shrink-0 text-center">
-                        <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${
-                          rank === 1 ? 'bg-yellow-100 text-yellow-800' :
-                          rank === 2 ? 'bg-gray-200 text-gray-700' :
-                          rank === 3 ? 'bg-orange-100 text-orange-700' :
-                          'bg-gray-100 text-gray-600'
-                        }`}>
-                          {rank <= 3 ? (rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉') : rank}
-                        </div>
+                      {/* Posição */}
+                      <div className="w-8 flex-shrink-0 text-center">
+                        <span className="text-sm font-medium text-gray-400">{rank}</span>
                       </div>
 
-                      {/* Info */}
+                      {/* Info principal */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-semibold text-gray-900 truncate">{candidato.nome}</p>
-                          <span className="text-xs font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <p className="font-medium text-gray-900 truncate">{candidato.nome}</p>
+                          <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
                             {candidato.tipoSanguineo}
                           </span>
                           {candidato.lote && (
-                            <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                            <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
                               Lote {candidato.lote}
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-3 text-sm text-gray-600">
-                          <span>{candidato.pontos} pts</span>
-                          <span>•</span>
-                          <span>{candidato.titulo}</span>
+                        <div className="flex items-center gap-3 text-xs text-gray-400">
+                          {candidato.ultimaDoacao ? (
+                            <span>Última doação: {new Date(candidato.ultimaDoacao).toLocaleDateString('pt-BR')}</span>
+                          ) : (
+                            <span>Sem registro de doação</span>
+                          )}
                           {candidato.distancia !== undefined && (
                             <>
-                              <span>•</span>
-                              <span>{candidato.distancia.toFixed(1)} km</span>
+                              <span>·</span>
+                              <span>{candidato.distancia.toFixed(1)} km do hemocentro</span>
                             </>
                           )}
                         </div>
                       </div>
 
                       {/* Score */}
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-primary">{candidato.score?.toFixed(1) || '0.0'}</div>
-                        <div className="text-xs text-gray-500">score</div>
+                      <div className="text-center w-16">
+                        <div className="text-base font-semibold text-gray-800">{candidato.score?.toFixed(1) ?? '—'}</div>
+                        <div className="text-xs text-gray-400">score</div>
                       </div>
 
                       {/* Status */}
-                      <div className="text-right min-w-[100px]">
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${status.color}`}>
-                          {status.icon} {status.label}
+                      <div className="min-w-[110px] text-right">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium ${status.color}`}>
+                          {status.label}
                         </span>
                       </div>
 
-                      {/* Botão ver mais */}
+                      {/* Detalhes */}
                       <button
                         onClick={() => setCandidatoSelecionado(candidato)}
-                        className="text-primary hover:text-primary/80 font-semibold text-sm"
+                        className="text-sm text-gray-400 hover:text-gray-700 transition-colors"
                       >
-                        Ver →
+                        Detalhes
                       </button>
                     </div>
                   );
@@ -334,55 +328,50 @@ export default function DetalhesSolicitacao() {
       {candidatoSelecionado && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setCandidatoSelecionado(null)}>
           <div className="bg-white rounded-xl p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-start justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-900">{candidatoSelecionado.nome}</h3>
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">{candidatoSelecionado.nome}</h3>
+                <p className="text-sm text-gray-500 mt-0.5">Detalhes do candidato</p>
+              </div>
               <button onClick={() => setCandidatoSelecionado(null)} className="text-gray-400 hover:text-gray-600">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
-            
-            <div className="space-y-3">
-              <div className="flex items-center justify-between py-2 border-b border-gray-200">
-                <span className="text-gray-600">Score</span>
-                <span className="font-bold text-primary text-lg">{candidatoSelecionado.score?.toFixed(1) || '0.0'}</span>
+
+            <div className="divide-y divide-gray-100">
+              <div className="flex items-center justify-between py-3">
+                <span className="text-sm text-gray-500">Tipo sanguíneo</span>
+                <span className="text-sm font-semibold text-gray-900">{candidatoSelecionado.tipoSanguineo}</span>
               </div>
-              <div className="flex items-center justify-between py-2 border-b border-gray-200">
-                <span className="text-gray-600">Tipo sanguíneo</span>
-                <span className="font-semibold text-gray-900">{candidatoSelecionado.tipoSanguineo}</span>
-              </div>
-              <div className="flex items-center justify-between py-2 border-b border-gray-200">
-                <span className="text-gray-600">Pontuação</span>
-                <span className="font-semibold text-gray-900">{candidatoSelecionado.pontos} pts</span>
-              </div>
-              <div className="flex items-center justify-between py-2 border-b border-gray-200">
-                <span className="text-gray-600">Título</span>
-                <span className="font-semibold text-gray-900">{candidatoSelecionado.titulo}</span>
+              <div className="flex items-center justify-between py-3">
+                <span className="text-sm text-gray-500">Score de prioridade</span>
+                <span className="text-sm font-semibold text-gray-900">{candidatoSelecionado.score?.toFixed(1) ?? '—'}</span>
               </div>
               {candidatoSelecionado.distancia !== undefined && (
-                <div className="flex items-center justify-between py-2 border-b border-gray-200">
-                  <span className="text-gray-600">Distância</span>
-                  <span className="font-semibold text-gray-900">{candidatoSelecionado.distancia.toFixed(1)} km</span>
+                <div className="flex items-center justify-between py-3">
+                  <span className="text-sm text-gray-500">Distância</span>
+                  <span className="text-sm font-semibold text-gray-900">{candidatoSelecionado.distancia.toFixed(1)} km</span>
                 </div>
               )}
-              {candidatoSelecionado.ultimaDoacao && (
-                <div className="flex items-center justify-between py-2 border-b border-gray-200">
-                  <span className="text-gray-600">Última doação</span>
-                  <span className="font-semibold text-gray-900">
-                    {new Date(candidatoSelecionado.ultimaDoacao).toLocaleDateString('pt-BR')}
-                  </span>
-                </div>
-              )}
+              <div className="flex items-center justify-between py-3">
+                <span className="text-sm text-gray-500">Última doação</span>
+                <span className="text-sm font-semibold text-gray-900">
+                  {candidatoSelecionado.ultimaDoacao
+                    ? new Date(candidatoSelecionado.ultimaDoacao).toLocaleDateString('pt-BR')
+                    : 'Sem registro'}
+                </span>
+              </div>
               {candidatoSelecionado.lote && (
-                <div className="flex items-center justify-between py-2 border-b border-gray-200">
-                  <span className="text-gray-600">Lote de notificação</span>
-                  <span className="font-semibold text-blue-600">Lote {candidatoSelecionado.lote}</span>
+                <div className="flex items-center justify-between py-3">
+                  <span className="text-sm text-gray-500">Lote de notificação</span>
+                  <span className="text-sm font-semibold text-gray-900">Lote {candidatoSelecionado.lote}</span>
                 </div>
               )}
-              <div className="flex items-center justify-between py-2">
-                <span className="text-gray-600">Status</span>
-                <span className="font-semibold text-gray-900 capitalize">{candidatoSelecionado.status}</span>
+              <div className="flex items-center justify-between py-3">
+                <span className="text-sm text-gray-500">Status</span>
+                <span className="text-sm font-semibold text-gray-900 capitalize">{candidatoSelecionado.status}</span>
               </div>
             </div>
           </div>

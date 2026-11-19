@@ -6,7 +6,7 @@ import { URGENCIA_LABELS, URGENCIA_COLORS } from '../types';
 import type { Solicitacao, Resposta, TipoSanguineo, NivelUrgencia, StatusSolicitacao } from '../types';
 
 export default function Solicitacoes() {
-  const { user, hemocentro } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>([]);
   const [respostas, setRespostas] = useState<Resposta[]>([]);

@@ -1,4 +1,4 @@
-import { collection, query, where, getDocs, orderBy, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Solicitacao, Resposta, Hemocentro } from '../types';
 

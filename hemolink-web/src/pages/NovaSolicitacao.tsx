@@ -10,7 +10,7 @@ const TIPOS_SANGUINEOS: (TipoSanguineo | 'todos')[] = ['A+', 'A-', 'B+', 'B-', '
 const NIVEIS_URGENCIA: NivelUrgencia[] = ['baixa', 'media', 'alta', 'critica'];
 
 export default function NovaSolicitacao() {
-  const { user, hemocentro } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   
   const [tipoSelecionado, setTipoSelecionado] = useState<TipoSanguineo | 'todos' | null>(null);
